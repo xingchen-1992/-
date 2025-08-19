@@ -1,0 +1,107 @@
+import { spawn } from "child_process";
+import { Logger } from "./logger.js";
+
+export async function executeCommand(
+  command: string,
+  args: string[],
+  onProgress?: (newOutput: string) => void,
+  timeout: number = 120000 // 2 minutes default
+): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const startTime = Date.now();
+    Logger.commandExecution(command, args, startTime);
+
+    const childProcess = spawn(command, args, {
+      env: process.env,
+      shell: false,
+      stdio: ["ignore", "pipe", "pipe"],
+    });
+
+    let stdout = "";
+    let stderr = "";
+    let isResolved = false;
+    let lastReportedLength = 0;
+    
+    // Set up timeout
+    const timeoutHandle = setTimeout(() => {
+      if (!isResolved) {
+        isResolved = true;
+        childProcess.kill('SIGTERM');
+        Logger.error(`Command timed out after ${timeout}ms`);
+        reject(new Error(`Command timed out after ${timeout}ms`));
+      }
+    }, timeout);
+
+    childProcess.stdout.on("data", (data) => {
+      stdout += data.toString();
+      
+      // Report new content if callback provided
+      if (onProgress && stdout.length > lastReportedLength) {
+        const newContent = stdout.substring(lastReportedLength);
+        lastReportedLength = stdout.length;
+        onProgress(newContent);
+      }
+    });
+
+    childProcess.stderr.on("data", (data) => {
+      stderr += data.toString();
+      
+      // Check for common Codex/OpenAI errors
+      if (stderr.includes("UNAUTHENTICATED") || stderr.includes("authentication failed")) {
+        Logger.authenticationStatus(false, "API key or login");
+      }
+      
+      if (stderr.includes("RESOURCE_EXHAUSTED") || stderr.includes("rate limit")) {
+        Logger.error("Rate limit or quota exceeded");
+      }
+      
+      if (stderr.includes("PERMISSION_DENIED") || stderr.includes("sandbox")) {
+        Logger.error("Sandbox permission denied");
+      }
+    });
+
+    childProcess.on("error", (error) => {
+      if (!isResolved) {
+        isResolved = true;
+        clearTimeout(timeoutHandle);
+        Logger.error(`Process error:`, error);
+        
+        if (error.message.includes("ENOENT")) {
+          reject(new Error("Codex CLI not found. Please install with: npm install -g @openai/codex"));
+        } else {
+          reject(new Error(`Failed to spawn command: ${error.message}`));
+        }
+      }
+    });
+
+    childProcess.on("close", (code) => {
+      if (!isResolved) {
+        isResolved = true;
+        clearTimeout(timeoutHandle);
+        
+        if (code === 0) {
+          Logger.commandComplete(startTime, code, stdout.length);
+          resolve(stdout.trim());
+        } else {
+          Logger.commandComplete(startTime, code ?? undefined);
+          Logger.error(`Failed with exit code ${code}`);
+          const errorMessage = stderr.trim() || "Unknown error";
+          reject(new Error(`Command failed with exit code ${code}: ${errorMessage}`));
+        }
+      }
+    });
+
+    // Handle process termination
+    process.on('SIGINT', () => {
+      if (!isResolved) {
+        childProcess.kill('SIGTERM');
+      }
+    });
+
+    process.on('SIGTERM', () => {
+      if (!isResolved) {
+        childProcess.kill('SIGTERM');
+      }
+    });
+  });
+}
