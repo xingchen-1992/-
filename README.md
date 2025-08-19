@@ -1,6 +1,6 @@
 # Codex CLI MCP Server
 
-An MCP server that allows Claude Code to interact with the OpenAI Codex CLI. If you have a ChatGPT subscription and a claude code subscription, you can use this tool to get the benefits of both, as a $20 ChatGPT subscription gives you access to GPT-5 for free in Codex CLI. Two AI minds are better than one!
+An MCP server that allows Claude Code to interact with the OpenAI Codex CLI. If you have a ChatGPT subscription and a claude code subscription, you can use this tool to get the benefits of both, as a $20 ChatGPT subscription gives you access to GPT-5 for free in Codex CLI.
 
 ## Features
 
@@ -18,7 +18,12 @@ An MCP server that allows Claude Code to interact with the OpenAI Codex CLI. If 
    npm install -g @openai/codex
    ```
 
-2. **Install this MCP server**:
+2. **Add to Claude Code using npx**:
+   ```bash
+   claude mcp add codex-cli -- npx -y codex-cli-mcp-tool
+   ```
+   
+   Or install globally first:
    ```bash
    npm install -g codex-cli-mcp-tool
    ```

@@ -5,7 +5,7 @@
   "type": "module",
   "main": "dist/index.js",
   "bin": {
-    "codex-mcp": "dist/index.js"
+    "codex-cli-mcp-tool": "dist/index.js"
   },
   "scripts": {
     "build": "tsc",
