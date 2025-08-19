@@ -212,5 +212,4 @@ MIT License - see LICENSE file for details.
 ## Support
 
 - GitHub Issues: [Report bugs and feature requests](https://github.com/Mr-Tomahawk/codex-cli-mcp-tool/issues)
-- Documentation: Check the IMPLEMENTATION_CONTEXT.md for detailed architecture
 - OpenAI Codex: https://github.com/openai/codex
