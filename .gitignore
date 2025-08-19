@@ -101,3 +101,4 @@ test-*.js
 
 # Implementation documentation (keep local only)
 IMPLEMENTATION_CONTEXT.md
+placeholder.md
