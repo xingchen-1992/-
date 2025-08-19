@@ -32,7 +32,7 @@ export async function executeCodex(
     approval,
     image,
     config,
-    timeout = 120000,
+    timeout,
     workingDir,
     profile,
     useExec = true

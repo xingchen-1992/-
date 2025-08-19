@@ -5,7 +5,7 @@ export async function executeCommand(
   command: string,
   args: string[],
   onProgress?: (newOutput: string) => void,
-  timeout: number = 120000 // 2 minutes default
+  timeout?: number
 ): Promise<string> {
   return new Promise((resolve, reject) => {
     const startTime = Date.now();
@@ -22,15 +22,18 @@ export async function executeCommand(
     let isResolved = false;
     let lastReportedLength = 0;
     
-    // Set up timeout
-    const timeoutHandle = setTimeout(() => {
-      if (!isResolved) {
-        isResolved = true;
-        childProcess.kill('SIGTERM');
-        Logger.error(`Command timed out after ${timeout}ms`);
-        reject(new Error(`Command timed out after ${timeout}ms`));
-      }
-    }, timeout);
+    // Set up timeout if specified
+    let timeoutHandle: NodeJS.Timeout | undefined;
+    if (timeout) {
+      timeoutHandle = setTimeout(() => {
+        if (!isResolved) {
+          isResolved = true;
+          childProcess.kill('SIGTERM');
+          Logger.error(`Command timed out after ${timeout}ms`);
+          reject(new Error(`Command timed out after ${timeout}ms`));
+        }
+      }, timeout);
+    }
 
     childProcess.stdout.on("data", (data) => {
       stdout += data.toString();
@@ -63,7 +66,7 @@ export async function executeCommand(
     childProcess.on("error", (error) => {
       if (!isResolved) {
         isResolved = true;
-        clearTimeout(timeoutHandle);
+        if (timeoutHandle) clearTimeout(timeoutHandle);
         Logger.error(`Process error:`, error);
         
         if (error.message.includes("ENOENT")) {
@@ -77,7 +80,7 @@ export async function executeCommand(
     childProcess.on("close", (code) => {
       if (!isResolved) {
         isResolved = true;
-        clearTimeout(timeoutHandle);
+        if (timeoutHandle) clearTimeout(timeoutHandle);
         
         if (code === 0) {
           Logger.commandComplete(startTime, code, stdout.length);
