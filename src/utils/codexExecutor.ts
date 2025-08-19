@@ -46,13 +46,9 @@ export async function executeCodex(
     args.push('exec');
   }
   
-  // Add model selection
+  // Add model selection (always gpt-5)
   if (model) {
-    if (model === MODELS.OSS) {
-      args.push(CLI.FLAGS.OSS);
-    } else {
-      args.push(CLI.FLAGS.MODEL, model);
-    }
+    args.push(CLI.FLAGS.MODEL, MODELS.GPT5);
   }
   
   // Add sandbox mode
@@ -206,19 +202,9 @@ export function validateModel(model: string): boolean {
   return Object.values(MODELS).includes(model as any) || model.startsWith('gpt-') || model.startsWith('o');
 }
 
-export function getModelFallbacks(model: string): string[] {
-  switch (model) {
-    case MODELS.GPT5:
-      return [MODELS.O3, MODELS.O3_MINI];
-    case MODELS.O3:
-      return [MODELS.GPT5, MODELS.O3_MINI];
-    case MODELS.O3_MINI:
-      return [MODELS.GPT5, MODELS.O3];
-    case MODELS.OSS:
-      return [MODELS.GPT5, MODELS.O3];
-    default:
-      return [MODELS.GPT5, MODELS.O3, MODELS.O3_MINI];
-  }
+export function getModelFallbacks(_model: string): string[] {
+  // Only GPT-5 is supported now
+  return [MODELS.GPT5];
 }
 
 export function getSandboxFallbacks(sandbox: string): string[] {

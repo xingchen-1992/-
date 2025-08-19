@@ -12,7 +12,7 @@ const execCodexArgsSchema = z.object({
   prompt: z.string().min(1).describe("Command or instruction for non-interactive Codex execution"),
   model: z.string().optional().describe(`Model to use: ${Object.values(MODELS).join(', ')}`),
   sandbox: z.string().optional().describe(`Sandbox mode: ${Object.values(SANDBOX_MODES).join(', ')}`),
-  timeout: z.number().default(60000).describe("Maximum execution time in milliseconds (default: 60000)"),
+  timeout: z.number().optional().describe("Maximum execution time in milliseconds (optional)"),
   workingDir: z.string().optional().describe("Working directory for execution"),
 });
 

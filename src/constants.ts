@@ -26,9 +26,6 @@ export const STATUS_MESSAGES = {
 // Models
 export const MODELS = {
   GPT5: "gpt-5",
-  O3: "o3",
-  O3_MINI: "o3-mini",
-  OSS: "oss", // Local Ollama
 } as const;
 
 // Sandbox modes

@@ -9,6 +9,71 @@ import {
   APPROVAL_POLICIES
 } from '../constants.js';
 
+/*
+ * CRITICAL INSTRUCTIONS FOR CLAUDE:
+ * 
+ * When using this tool, NEVER:
+ * 1. Include your own answers or summaries in the prompt
+ * 2. Pre-answer questions before sending to Codex
+ * 3. Add interpretations that bias Codex's response
+ * 
+ * ✅ CORRECT: "Summarize @file.md" or "Analyze this code for security issues"  
+ * ❌ WRONG: "Summarize this document. I think it means X: [content]"
+ * 
+ * QUERY BEST PRACTICES:
+ * - Be direct and specific in requests
+ * - Use @ syntax for file references  
+ * - Let Codex find and read files independently
+ * - Report progress to user during long operations
+ * 
+ * OUTPUT HANDLING:
+ * - Present Codex's raw response to user
+ * - Don't summarize unless explicitly asked
+ * - Don't add commentary before/after responses
+ * - Trust Codex's technical analysis
+ * 
+ * ERROR HANDLING:  
+ * - Report errors clearly with helpful context
+ * - Don't fallback to your own answers
+ * - Suggest alternatives (different model, sandbox mode)
+ * - Include troubleshooting hints
+ */
+
+/**
+ * Builds structured prompts with output formatting instructions for Codex
+ */
+function buildCodexPrompt(userPrompt: string, config: {
+  includeThinking?: boolean;
+  includeMetadata?: boolean;
+  model?: string;
+  sandbox?: string;
+}): string {
+  const { includeThinking = true, includeMetadata = true, model, sandbox } = config;
+  
+  // Add output formatting instructions to ensure consistent responses
+  let enhancedPrompt = userPrompt;
+  
+  // Only add formatting if this looks like a complex analysis request
+  if (userPrompt.length > 50 || userPrompt.includes('@') || userPrompt.includes('analyze') || userPrompt.includes('review')) {
+    enhancedPrompt += `\n\n## Response Format Guidelines:
+- Provide clear, structured analysis
+- Use markdown formatting for readability
+- Include code examples when relevant
+- Explain technical concepts clearly
+- Focus on actionable insights`;
+
+    if (includeThinking) {
+      enhancedPrompt += `\n- Include your reasoning process`;
+    }
+    
+    if (includeMetadata) {
+      enhancedPrompt += `\n- Note any assumptions or limitations`;
+    }
+  }
+  
+  return enhancedPrompt;
+}
+
 const askCodexArgsSchema = z.object({
   prompt: z.string().min(1).describe("User query or instruction for Codex. Can include file references and complex requests."),
   model: z.string().optional().describe(`Optional model to use. Options: ${Object.values(MODELS).join(', ')}. Defaults to gpt-5.`),
@@ -16,7 +81,7 @@ const askCodexArgsSchema = z.object({
   approval: z.string().optional().describe(`Approval policy: ${Object.values(APPROVAL_POLICIES).join(', ')}. Defaults to untrusted for safety.`),
   image: z.union([z.string(), z.array(z.string())]).optional().describe("Optional image file path(s) to include with the prompt"),
   config: z.union([z.string(), z.record(z.any())]).optional().describe("Configuration overrides as 'key=value' string or object"),
-  timeout: z.number().default(120000).describe("Maximum execution time in milliseconds (default: 120000)"),
+  timeout: z.number().optional().describe("Maximum execution time in milliseconds (optional)"),
   workingDir: z.string().optional().describe("Working directory for Codex execution"),
   profile: z.string().optional().describe("Configuration profile to use from ~/.codex/config.toml"),
   includeThinking: z.boolean().default(true).describe("Include reasoning/thinking section in response"),
@@ -47,17 +112,28 @@ export const askCodexTool: UnifiedTool = {
     } = args;
 
     if (!prompt?.trim()) {
-      throw new Error(ERROR_MESSAGES.NO_PROMPT_PROVIDED);
+      throw new Error("You must provide a valid query or instruction for Codex analysis");
     }
 
     try {
-      // Provide progress update
+      // Build enhanced prompt with formatting instructions
+      const enhancedPrompt = buildCodexPrompt(prompt.trim() as string, {
+        includeThinking: includeThinking as boolean,
+        includeMetadata: includeMetadata as boolean,
+        model: model as string,
+        sandbox: sandbox as string
+      });
+
+      // Detailed progress reporting
+      const modelName = (model as string) || 'gpt-5';
+      const sandboxMode = (sandbox as string) || 'read-only';
+      
       if (onProgress) {
-        onProgress(STATUS_MESSAGES.PROCESSING_START);
+        onProgress(`Executing Codex with ${modelName} in ${sandboxMode} mode...`);
       }
 
       const result = await executeCodex(
-        prompt as string,
+        enhancedPrompt,
         {
           model: model as string,
           sandbox: sandbox as string,
@@ -83,25 +159,82 @@ export const askCodexTool: UnifiedTool = {
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : String(error);
       
-      // Provide helpful error context
-      if (errorMessage.includes('not found')) {
-        return `❌ **Error**: ${ERROR_MESSAGES.CODEX_NOT_FOUND}\n\nPlease install the Codex CLI:\n\`\`\`bash\nnpm install -g @openai/codex\n\`\`\``;
+      // Comprehensive error handling with helpful context
+      if (errorMessage.includes('not found') || errorMessage.includes('command not found')) {
+        return `❌ **Codex CLI Not Found**: ${ERROR_MESSAGES.CODEX_NOT_FOUND}
+
+**Quick Fix:**
+\`\`\`bash
+npm install -g @openai/codex
+\`\`\`
+
+**Verification:** Run \`codex --version\` to confirm installation.`;
       }
       
-      if (errorMessage.includes('authentication')) {
-        return `❌ **Authentication Error**: ${ERROR_MESSAGES.AUTHENTICATION_FAILED}\n\nPlease ensure you have:\n1. Valid OpenAI API key set: \`export OPENAI_API_KEY=your-key\`\n2. Or logged in with: \`codex login\``;
+      if (errorMessage.includes('authentication') || errorMessage.includes('unauthorized') || errorMessage.includes('invalid api key')) {
+        return `❌ **Authentication Failed**: ${ERROR_MESSAGES.AUTHENTICATION_FAILED}
+
+**Setup Options:**
+1. **API Key:** \`export OPENAI_API_KEY=your-key\`
+2. **Login:** \`codex login\` (requires ChatGPT subscription)
+3. **Config:** Add key to \`~/.codex/config.toml\`
+
+**Troubleshooting:** Verify key has Codex access in OpenAI dashboard.`;
       }
       
-      if (errorMessage.includes('quota') || errorMessage.includes('rate limit')) {
-        return `❌ **Rate Limit**: ${ERROR_MESSAGES.QUOTA_EXCEEDED}\n\nPlease try:\n1. Using a different model with \`model: "${MODELS.O3_MINI}"\`\n2. Waiting a few minutes before retrying\n3. Checking your OpenAI account quota`;
+      if (errorMessage.includes('quota') || errorMessage.includes('rate limit') || errorMessage.includes('usage limit')) {
+        return `❌ **Usage Limit Reached**: ${ERROR_MESSAGES.QUOTA_EXCEEDED}
+
+**Immediate Solutions:**
+1. **Wait and retry:** Rate limits reset periodically
+2. **Check quota:** Visit OpenAI dashboard for usage details
+
+**Note:** Only GPT-5 model is supported`;
       }
       
-      if (errorMessage.includes('sandbox') || errorMessage.includes('permission')) {
-        return `❌ **Sandbox Error**: ${ERROR_MESSAGES.SANDBOX_VIOLATION}\n\nConsider:\n1. Using a less restrictive sandbox mode\n2. Adding appropriate approval policy\n3. Running with \`sandbox: "${SANDBOX_MODES.WORKSPACE_WRITE}"\` or \`approval: "${APPROVAL_POLICIES.ON_REQUEST}"\``;
+      if (errorMessage.includes('timeout')) {
+        return `❌ **Request Timeout**: Operation took longer than expected
+
+**Solutions:**
+1. **Increase timeout:** Add \`timeout: 300000\` (5 minutes)
+2. **Simplify request:** Break complex queries into smaller parts  
+3. **Retry request:** GPT-5 is the only supported model
+4. **Check connectivity:** Ensure stable internet connection`;
       }
       
-      // Generic error with context
-      return `❌ **Error executing Codex**: ${errorMessage}\n\n**Request Details:**\n- Model: ${model || 'default (gpt-5)'}\n- Sandbox: ${sandbox || 'default (read-only)'}\n- Approval: ${approval || 'default (untrusted)'}`;
+      if (errorMessage.includes('sandbox') || errorMessage.includes('permission') || errorMessage.includes('access denied')) {
+        return `❌ **Permission Error**: ${ERROR_MESSAGES.SANDBOX_VIOLATION}
+
+**Permission Solutions:**
+1. **Relax sandbox:** Use \`sandbox: "${SANDBOX_MODES.WORKSPACE_WRITE}"\`
+2. **Approval policy:** Try \`approval: "${APPROVAL_POLICIES.ON_REQUEST}"\`  
+3. **Full access:** Use \`sandbox: "${SANDBOX_MODES.DANGER_FULL_ACCESS}"\` (caution!)
+4. **Check file permissions:** Ensure Codex can access target files`;
+      }
+
+      if (errorMessage.includes('model') || errorMessage.includes('unsupported')) {
+        return `❌ **Model Error**: Requested model may not be available
+
+**Model Alternatives:**
+- **GPT-5:** \`model: "${MODELS.GPT5}"\` (only supported model)
+
+**Check:** Verify model availability in your OpenAI account.`;
+      }
+      
+      // Generic error with comprehensive context
+      return `❌ **Codex Execution Error**: ${errorMessage}
+
+**Request Configuration:**
+- **Model:** ${model || 'gpt-5 (default)'}
+- **Sandbox:** ${sandbox || 'read-only (default)'}  
+- **Approval:** ${approval || 'untrusted (default)'}
+- **Working Directory:** ${workingDir || 'current directory'}
+
+**Debug Steps:**
+1. Verify Codex CLI installation: \`codex --version\`
+2. Check authentication: \`codex login\` or API key
+3. Test with simpler query: \`codex "Hello world"\`
+4. Try different model or sandbox mode`;
     }
   }
 };

@@ -5,7 +5,7 @@ An MCP server that allows Claude Code to interact with the OpenAI Codex CLI. If 
 ## Features
 
 - **Complete Codex Integration**: Access all Codex CLI capabilities through MCP
-- **Multiple Models**: Support for gpt-5, o3, o3-mini, and local OSS models
+- **GPT-5 Model**: Powered by OpenAI's most capable model
 - **Sandbox Safety**: Configurable execution modes (read-only, workspace-write, full-access)
 - **Progress Tracking**: Real-time updates for long-running operations
 - **Git Integration**: Apply Codex-generated diffs directly to repositories
@@ -59,7 +59,7 @@ Execute Codex with comprehensive parameter support for code analysis, generation
 
 **Parameters:**
 - `prompt` (required): Your query or instruction
-- `model` (optional): gpt-5, o3, o3-mini, oss
+- `model` (optional): gpt-5 (default and only supported model)
 - `sandbox` (optional): read-only, workspace-write, danger-full-access
 - `approval` (optional): untrusted, on-failure, on-request, never
 - `image` (optional): Image file path(s) to include
@@ -68,7 +68,7 @@ Execute Codex with comprehensive parameter support for code analysis, generation
 
 **Example:**
 ```
-ask-codex "Explain this code: @main.py" model="gpt-5" sandbox="read-only"
+ask-codex "Explain this code: @main.py" sandbox="read-only"
 ```
 
 ### exec-codex
@@ -76,7 +76,7 @@ Non-interactive Codex execution for automation workflows.
 
 **Parameters:**
 - `prompt` (required): Command or instruction
-- `model` (optional): Model to use
+- `model` (optional): Always gpt-5
 - `sandbox` (optional): Sandbox mode
 - `timeout` (optional): Execution timeout
 
@@ -137,7 +137,7 @@ ask-codex "Generate unit tests for the User class" sandbox="workspace-write"
 
 ### Debugging
 ```
-ask-codex "Fix the bug in login function" model="o3" approval="on-request"
+ask-codex "Fix the bug in login function" approval="on-request"
 ```
 
 ### File Operations
@@ -175,7 +175,6 @@ apply-diff validate=true
    - Verify file permissions
 
 4. **Rate limits**:
-   - Try different model (o3-mini)
    - Wait before retrying
    - Check OpenAI account quota
 
@@ -201,6 +200,10 @@ npm run dev
 npm test
 npm run lint
 ```
+
+## Acknowledgments
+
+This project is based on the excellent [Gemini MCP Tool](https://github.com/jamubc/gemini-mcp-tool) by jamubc. We adapted their architecture and patterns to create this Codex CLI integration.
 
 ## License
 

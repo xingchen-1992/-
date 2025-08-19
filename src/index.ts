@@ -260,22 +260,11 @@ server.setRequestHandler(GetPromptRequestSchema, async (request: GetPromptReques
 
 // Start the server
 async function main() {
-  Logger.info("Initializing Codex CLI MCP server...");
-  
-  // Test Codex CLI availability
-  try {
-    const { executeCommand } = await import("./utils/commandExecutor.js");
-    await executeCommand("codex", ["--version"], undefined, 5000);
-    Logger.success("Codex CLI detected and ready");
-  } catch (error) {
-    Logger.warn("Codex CLI not found or not accessible:", error instanceof Error ? error.message : String(error));
-    Logger.info("Server will start but some tools may fail. Please ensure Codex CLI is installed:");
-    Logger.info("npm install -g @openai/codex");
-  }
+  Logger.debug("init codex-cli-mcp-tool");
   
   const transport = new StdioServerTransport();
   await server.connect(transport);
-  Logger.success("Codex CLI MCP server listening on stdio");
+  Logger.debug("codex-cli-mcp-tool listening on stdio");
 }
 
 main().catch((error) => {
