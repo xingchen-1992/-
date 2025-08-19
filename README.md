@@ -20,7 +20,7 @@ An MCP server that allows Claude Code to interact with the OpenAI Codex CLI. If 
 
 2. **Add to Claude Code using npx**:
    ```bash
-   claude mcp add codex-cli -- npx -y codex-cli-mcp-tool
+   claude mcp add codex-cli-mcp-tool -- npx -y codex-cli-mcp-tool
    ```
    
    Or install globally first:
@@ -36,21 +36,6 @@ An MCP server that allows Claude Code to interact with the OpenAI Codex CLI. If 
    # Option 2: Login with ChatGPT account
    codex login
    ```
-
-## Claude Code Configuration
-
-Add to your Claude Code MCP settings:
-
-```json
-{
-  "mcpServers": {
-    "codex": {
-      "command": "codex-cli-mcp-tool",
-      "args": []
-    }
-  }
-}
-```
 
 ## Available Tools
 

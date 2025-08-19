@@ -111,7 +111,7 @@ ${codexVersion}
 \`\`\`
 
 ## Codex MCP Server
-- Version: 1.0.3
+- Version: 1.0.4
 - MCP SDK: @modelcontextprotocol/sdk ^0.5.0
 - Node.js: ${process.version}
 - Platform: ${process.platform}`;
@@ -119,7 +119,7 @@ ${codexVersion}
       return `# Version Information
 
 ## Codex MCP Server
-- Version: 1.0.3
+- Version: 1.0.4
 - MCP SDK: @modelcontextprotocol/sdk ^0.5.0
 - Node.js: ${process.version}
 - Platform: ${process.platform}
