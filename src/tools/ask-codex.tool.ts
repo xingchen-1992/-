@@ -117,12 +117,8 @@ export const askCodexTool: UnifiedTool = {
 
     try {
       // Build enhanced prompt with formatting instructions
-      const enhancedPrompt = buildCodexPrompt(prompt.trim() as string, {
-        includeThinking: includeThinking as boolean,
-        includeMetadata: includeMetadata as boolean,
-        model: model as string,
-        sandbox: sandbox as string
-      });
+      // 临时简化：直接使用原始prompt进行调试
+      const enhancedPrompt = prompt.trim() as string;
 
       // Detailed progress reporting
       const modelName = (model as string) || 'gpt-5';
@@ -135,7 +131,7 @@ export const askCodexTool: UnifiedTool = {
       const result = await executeCodex(
         enhancedPrompt,
         {
-          model: model as string,
+          model: model as string, // 只有用户明确指定时才传递
           sandbox: sandbox as string,
           approval: approval as string,
           image,

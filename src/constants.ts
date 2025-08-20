@@ -81,8 +81,8 @@ export const CLI = {
   FLAGS: {
     MODEL: "-m",
     CONFIG: "-c",
-    SANDBOX: "--sandbox",
-    APPROVAL: "-a",
+    SANDBOX: "-s",  // 修复：使用正确的短参数
+    APPROVAL: "-a",  // 注意：exec命令不支持此参数，需要在代码中处理
     IMAGE: "-i",
     PROFILE: "-p",
     OSS: "--oss",

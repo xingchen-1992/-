@@ -10,6 +10,176 @@ import {
   STATUS_MESSAGES,
   CodexOutput
 } from '../constants.js';
+import * as fs from 'fs';
+import * as path from 'path';
+import { execSync } from 'child_process';
+
+interface CodexPathInfo {
+  command: string;
+  args: string[];
+  isProjectLocal: boolean;
+  availableMethods: string[];
+}
+
+/**
+ * 智能检测项目内Codex和全局Codex的可用性
+ * 优先使用用户已付费的全局CLI（200美元订阅）
+ */
+function detectCodexPaths(): CodexPathInfo {
+  Logger.info(`🔍 智能检测Codex CLI路径 (Windows环境优化v2)`);
+  
+  const availableMethods: string[] = [];
+  
+  // 🎯 方案1: 优先检测用户的付费全局CLI (最重要)
+  Logger.info(`📡 检测全局付费Codex CLI...`);
+  
+  // Windows环境下正确的命令名称 - 修复关键bug
+  const isWindows = process.platform === 'win32';
+  const globalCommand = isWindows ? 'codex.cmd' : 'codex';
+  const globalCommandAlt = 'codex'; // Windows备用命令
+  
+  Logger.info(`检测的命令: 主要=${globalCommand}, 备用=${globalCommandAlt}, 平台=${process.platform}`);
+  
+  // 方法1: 直接验证命令可用性 - 修复require问题
+  for (const cmd of [globalCommand, globalCommandAlt]) {
+    try {
+      // 使用顶层导入的execSync，避免ES模块require问题
+      const result = execSync(`${cmd} --version`, { 
+        encoding: 'utf8', 
+        timeout: 5000,
+        stdio: 'pipe'
+      });
+      
+      if (result && (result.includes('codex-cli') || result.includes('codex'))) {
+        const version = result.trim();
+        Logger.info(`✅ 找到用户付费的全局Codex CLI: ${version} (命令: ${cmd})`);
+        
+        // 获取完整路径以确保spawn能正确执行
+        let fullCommand = cmd;
+        // 直接使用路径检测，避免which模块依赖问题
+        if (isWindows && cmd === 'codex.cmd') {
+          const possiblePaths = [
+            'C:\Users\Administrator\AppData\Roaming\npm\codex.cmd',
+            (process.env.APPDATA ? process.env.APPDATA + '\npm\codex.cmd' : '')
+          ].filter(p => p);
+          
+          // 使用顶层导入的fs模块
+          for (const p of possiblePaths) {
+            if (fs.existsSync(p)) {
+              fullCommand = p;
+              break;
+            }
+          }
+        }
+        
+        Logger.info(`使用完整路径: ${fullCommand}`);
+        availableMethods.push(`全局付费Codex CLI (${cmd})`);
+        return {
+          command: fullCommand,
+          args: [],
+          isProjectLocal: false,
+          availableMethods
+        };
+      }
+    } catch (error) {
+      Logger.info(`命令${cmd}版本检测失败: ${error instanceof Error ? error.message : String(error)}`);
+    }
+  }
+  
+  // 方法2: 跳过which检测，直接进入路径检测
+  Logger.info('跳过which检测，直接使用路径验证');
+  
+  // 方法3: 检查常见的npm全局安装路径 - 增强版
+  const commonPaths = [
+    'C:\Users\Administrator\AppData\Roaming\npm\codex.cmd',
+    'C:\Users\Administrator\AppData\Roaming\npm\codex.exe',
+    'C:\Users\Administrator\AppData\Roaming\npm\codex',
+    (process.env.APPDATA ? process.env.APPDATA + '\npm\codex.cmd' : ''),
+    (process.env.APPDATA ? process.env.APPDATA + '\npm\codex.exe' : ''),
+    (process.env.APPDATA ? process.env.APPDATA + '\npm\codex' : ''),
+    // 添加其他常见路径
+    'C:\Program Files\nodejs\codex.cmd',
+    'C:\Program Files\nodejs\codex.exe'
+  ].filter(p => p && !p.includes('undefined'));
+  
+  for (const cmdPath of commonPaths) {
+    if (fs.existsSync(cmdPath)) {
+      Logger.info(`✅ 在常见路径找到Codex CLI: ${cmdPath}`);
+      availableMethods.push('npm全局路径');
+      return {
+        command: cmdPath,
+        args: [],
+        isProjectLocal: false,
+        availableMethods
+      };
+    }
+  }
+  
+  // 🔄 方案2: 项目内Codex检测 (备用方案)
+  Logger.info(`🔄 检测项目内Codex...`);
+  
+  // ES模块中获取__dirname等效路径 - Windows兼容版本
+  const currentModuleUrl = import.meta.url;
+  let currentModulePath = new URL(currentModuleUrl).pathname;
+  
+  // Windows路径修正：移除开头的斜杠并处理盘符
+  if (process.platform === 'win32' && currentModulePath.startsWith('/')) {
+    currentModulePath = currentModulePath.substring(1);
+  }
+  
+  const currentDir = path.dirname(currentModulePath);
+  
+  const projectCodexPath = path.resolve(currentDir, '../../../codex/codex-cli/bin/codex.js');
+  const projectBinaryPath = path.resolve(currentDir, '../../../codex/codex-cli/bin/codex-x86_64-pc-windows-msvc.exe');
+  
+  // 检查项目内Codex的可用性
+  const hasProjectCodexJS = fs.existsSync(projectCodexPath);
+  const hasProjectBinary = fs.existsSync(projectBinaryPath);
+  
+  Logger.info(`- 项目内codex.js: ${hasProjectCodexJS ? '✓' : '✗'} (${projectCodexPath})`);
+  Logger.info(`- 项目内二进制: ${hasProjectBinary ? '✓' : '✗'} (${projectBinaryPath})`);
+  
+  // 项目内完整方案
+  if (hasProjectCodexJS && hasProjectBinary) {
+    Logger.info(`🎯 使用项目内完整Codex`);
+    availableMethods.push('项目内完整Codex');
+    return {
+      command: 'node',
+      args: [projectCodexPath],
+      isProjectLocal: true,
+      availableMethods
+    };
+  }
+  
+  // 项目内混合方案
+  if (hasProjectCodexJS) {
+    Logger.info(`🔄 使用项目内Node.js + 全局二进制（混合方案）`);
+    availableMethods.push('项目内Node.js混合方案');
+    return {
+      command: 'node',
+      args: [projectCodexPath],
+      isProjectLocal: true,
+      availableMethods
+    };
+  }
+  
+  // ❌ 所有方案都失败
+  Logger.info(`❌ 无法找到任何可用的Codex CLI！`);
+  Logger.info(`请确认：`);
+  Logger.info(`1. 全局Codex CLI已安装: npm install -g @openai/codex`);
+  Logger.info(`2. 用户已登录: codex login`);
+  Logger.info(`3. PATH环境变量包含npm全局路径`);
+  Logger.info(`4. Windows用户: 检查是否有codex.cmd文件`);
+  
+  // 返回默认命令，让executeCommand阶段处理错误
+  availableMethods.push('默认命令(可能失败)');
+  return {
+    command: globalCommand,
+    args: [],
+    isProjectLocal: false,
+    availableMethods
+  };
+}
 
 export async function executeCodex(
   prompt: string,
@@ -38,17 +208,22 @@ export async function executeCodex(
     useExec = true
   } = options;
 
-  // Build command arguments
-  const args: string[] = [];
+  // 🎯 智能路径检测 - 获取最佳Codex执行路径
+  const pathInfo = detectCodexPaths();
+  Logger.info(`使用执行方案: ${pathInfo.availableMethods.join(', ')}`);
+  
+  // Build command arguments - 根据路径信息构造参数
+  const args: string[] = [...pathInfo.args];
   
   // Add exec subcommand for non-interactive mode
   if (useExec) {
     args.push('exec');
   }
   
-  // Add model selection (always gpt-5)
-  if (model) {
-    args.push(CLI.FLAGS.MODEL, MODELS.GPT5);
+  // Add model selection - 只在明确指定时添加
+  if (model && model.trim()) {
+    // 使用用户指定的模型，而不是硬编码gpt-5
+    args.push(CLI.FLAGS.MODEL, model.trim());
   }
   
   // Add sandbox mode
@@ -56,9 +231,12 @@ export async function executeCodex(
     args.push(CLI.FLAGS.SANDBOX, sandbox);
   }
   
-  // Add approval policy
-  if (approval) {
+  // Add approval policy (仅在交互式模式下支持，exec模式忽略)
+  if (approval && !useExec) {
     args.push(CLI.FLAGS.APPROVAL, approval);
+    Logger.info(`添加approval策略: ${approval}`);
+  } else if (approval && useExec) {
+    Logger.info(`注意: exec模式不支持approval参数，已忽略: ${approval}`);
   }
   
   // Add image attachments
@@ -92,13 +270,31 @@ export async function executeCodex(
     args.push(CLI.FLAGS.PROFILE, profile);
   }
   
-  // Add the prompt as the final argument
+  // Add the prompt as the final argument - 简化处理避免双重引用
+  // 让spawn和shell自动处理参数引用，避免手动添加引号导致的解析问题
   args.push(prompt);
+  
+  // 添加详细的调试信息 - 使用console.log确保输出
+  console.log(`🔧 调试信息:`);
+  console.log(`- 命令: ${pathInfo.command}`);
+  console.log(`- 参数数组: ${JSON.stringify(args)}`);
+  console.log(`- 参数总数: ${args.length}`);
+  console.log(`- 最后一个参数(prompt): "${args[args.length - 1]}"`);
+  console.log(`- 参数字符串: ${args.join(' ')}`);
+  
+  // 也通过Logger输出（如果可用）
+  Logger.info(`🔧 调试信息:`);
+  Logger.info(`- 命令: ${pathInfo.command}`);
+  Logger.info(`- 参数数组: ${JSON.stringify(args)}`);
+  Logger.info(`- 参数总数: ${args.length}`);
+  Logger.info(`- 最后一个参数(prompt): "${args[args.length - 1]}"`);
+  Logger.info(`- 参数字符串: ${args.join(' ')}`);
   
   Logger.sandboxMode(sandbox || CLI.DEFAULTS.SANDBOX, `${CLI.COMMANDS.CODEX} ${args.join(' ')}`);
   
   try {
-    const rawOutput = await executeCommand(CLI.COMMANDS.CODEX, args, onProgress, timeout);
+    // 🚀 使用智能检测的命令路径执行
+    const rawOutput = await executeCommand(pathInfo.command, args, onProgress, timeout);
     const parsedOutput = parseCodexOutput(rawOutput);
     
     // Check for authentication errors
@@ -112,9 +308,13 @@ export async function executeCodex(
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : String(error);
     
-    // Handle specific error types
+    // Handle specific error types - 智能错误处理
     if (errorMessage.includes('ENOENT') || errorMessage.includes('not found')) {
-      throw new Error(ERROR_MESSAGES.CODEX_NOT_FOUND);
+      if (pathInfo.isProjectLocal) {
+        throw new Error(`项目内Codex二进制文件未找到。请尝试: npm run build-codex 或联系支持团队`);
+      } else {
+        throw new Error(ERROR_MESSAGES.CODEX_NOT_FOUND);
+      }
     }
     
     if (errorMessage.includes('UNAUTHENTICATED') || errorMessage.includes('authentication')) {
@@ -142,7 +342,11 @@ export async function executeCodexApply(
 ): Promise<string> {
   const { dryRun, validate } = options;
   
-  const args: string[] = ['apply'];
+  // 🎯 智能路径检测 - 获取最佳Codex执行路径
+  const pathInfo = detectCodexPaths();
+  Logger.info(`Apply操作使用执行方案: ${pathInfo.availableMethods.join(', ')}`);
+  
+  const args: string[] = [...pathInfo.args, 'apply'];
   
   // Note: Codex apply doesn't have dry-run or validate flags in the current version
   // This is a placeholder for potential future functionality
@@ -150,7 +354,7 @@ export async function executeCodexApply(
   Logger.info(STATUS_MESSAGES.APPLYING_DIFF);
   
   try {
-    const result = await executeCommand(CLI.COMMANDS.CODEX, args, onProgress);
+    const result = await executeCommand(pathInfo.command, args, onProgress);
     Logger.success('Git diff applied successfully');
     return result;
   } catch (error) {

@@ -13,8 +13,9 @@ export async function executeCommand(
 
     const childProcess = spawn(command, args, {
       env: process.env,
-      shell: false,
+      shell: process.platform === 'win32',  // Windows需要shell来执行.cmd文件
       stdio: ["ignore", "pipe", "pipe"],
+      cwd: process.cwd(), // 确保工作目录正确
     });
 
     let stdout = "";
