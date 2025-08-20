@@ -10,65 +10,42 @@ import { execSync } from 'child_process';
  * 优先使用用户已付费的全局CLI（200美元订阅）
  */
 function detectCodexPaths() {
+    console.log('🔍 detectCodexPaths 函数开始执行');
     Logger.info(`🔍 智能检测Codex CLI路径 (Windows环境优化v2)`);
     const availableMethods = [];
-    // 🎯 方案1: 优先检测用户的付费全局CLI (最重要)
-    Logger.info(`📡 检测全局付费Codex CLI...`);
-    // Windows环境下正确的命令名称 - 修复关键bug
-    const isWindows = process.platform === 'win32';
-    const globalCommand = isWindows ? 'codex.cmd' : 'codex';
-    const globalCommandAlt = 'codex'; // Windows备用命令
-    Logger.info(`检测的命令: 主要=${globalCommand}, 备用=${globalCommandAlt}, 平台=${process.platform}`);
-    // 🔧 方法1: 直接使用完整路径优先策略 (Windows spawn修复)
-    Logger.info('优先使用完整路径策略，避免Windows spawn ENOENT问题');
-    // Windows上优先尝试完整路径
-    if (isWindows) {
-        const fullPaths = [
-            'C:\\Users\\Administrator\\AppData\\Roaming\\npm\\codex.cmd',
-            (process.env.APPDATA ? process.env.APPDATA + '\\npm\\codex.cmd' : '')
-        ].filter(p => p);
-        for (const fullPath of fullPaths) {
-            if (fs.existsSync(fullPath)) {
-                try {
-                    // 验证完整路径的可用性
-                    const result = execSync(`"${fullPath}" --version`, {
-                        encoding: 'utf8',
-                        timeout: 5000,
-                        stdio: 'pipe'
-                    });
-                    if (result && (result.includes('codex-cli') || result.includes('codex'))) {
-                        const version = result.trim();
-                        Logger.info(`✅ Windows完整路径验证成功: ${version} (路径: ${fullPath})`);
-                        availableMethods.push(`Windows完整路径 (${fullPath})`);
-                        return {
-                            command: fullPath,
-                            args: [],
-                            isProjectLocal: false,
-                            availableMethods
-                        };
-                    }
-                }
-                catch (error) {
-                    Logger.info(`完整路径 ${fullPath} 验证失败: ${error instanceof Error ? error.message : String(error)}`);
-                }
-            }
+    // 🎯 方案1: 优先使用用户本地编译的codex.exe (最重要)
+    Logger.info(`📡 检测用户本地编译的Codex CLI...`);
+    // 用户的本地编译版本路径 - 基于无审批方案
+    // 支持多个可能的本地编译路径
+    const possiblePaths = [
+        'H:/A_test/_tmp/codex-src/codex-rs/target/release/codex.exe', // 实际发现的路径
+        'H:/A_test/_tmp/codex-bin/codex.exe', // bin目录路径
+        'H:/A_test/codex/codex-rs/target/release/codex.exe' // 预期路径
+    ];
+    let userCompiledPath = null;
+    for (const path of possiblePaths) {
+        if (fs.existsSync(path)) {
+            userCompiledPath = path;
+            Logger.info(`✅ 找到用户编译版本: ${path}`);
+            break;
         }
     }
-    // 备用方法: 传统命令检测 (主要用于非Windows或找不到完整路径时)
-    for (const cmd of [globalCommand, globalCommandAlt]) {
+    console.log(`检查用户编译路径: ${userCompiledPath}`);
+    if (userCompiledPath && fs.existsSync(userCompiledPath)) {
+        console.log(`开始验证用户编译版本...`);
         try {
-            const result = execSync(`${cmd} --version`, {
+            // 验证用户编译版本的可用性
+            const result = execSync(`"${userCompiledPath}" --version`, {
                 encoding: 'utf8',
                 timeout: 5000,
                 stdio: 'pipe'
             });
-            if (result && (result.includes('codex-cli') || result.includes('codex'))) {
+            if (result && result.includes('codex-cli')) {
                 const version = result.trim();
-                Logger.info(`✅ 备用方法找到Codex CLI: ${version} (命令: ${cmd})`);
-                Logger.info(`⚠️  注意: 使用命令名称 ${cmd}，可能在Windows spawn中失败`);
-                availableMethods.push(`备用命令 (${cmd})`);
+                Logger.info(`✅ 用户本地编译版本验证成功: ${version} (路径: ${userCompiledPath})`);
+                availableMethods.push(`用户本地编译版 (${userCompiledPath})`);
                 return {
-                    command: cmd,
+                    command: userCompiledPath,
                     args: [],
                     isProjectLocal: false,
                     availableMethods
@@ -76,34 +53,12 @@ function detectCodexPaths() {
             }
         }
         catch (error) {
-            Logger.info(`命令${cmd}版本检测失败: ${error instanceof Error ? error.message : String(error)}`);
+            console.error(`用户编译版本 ${userCompiledPath} 验证失败:`, error);
+            Logger.info(`用户编译版本 ${userCompiledPath} 验证失败: ${error instanceof Error ? error.message : String(error)}`);
         }
     }
-    // 方法2: 跳过which检测，直接进入路径检测
-    Logger.info('跳过which检测，直接使用路径验证');
-    // 方法3: 检查常见的npm全局安装路径 - 增强版
-    const commonPaths = [
-        'C:\Users\Administrator\AppData\Roaming\npm\codex.cmd',
-        'C:\Users\Administrator\AppData\Roaming\npm\codex.exe',
-        'C:\Users\Administrator\AppData\Roaming\npm\codex',
-        (process.env.APPDATA ? process.env.APPDATA + '\npm\codex.cmd' : ''),
-        (process.env.APPDATA ? process.env.APPDATA + '\npm\codex.exe' : ''),
-        (process.env.APPDATA ? process.env.APPDATA + '\npm\codex' : ''),
-        // 添加其他常见路径
-        'C:\Program Files\nodejs\codex.cmd',
-        'C:\Program Files\nodejs\codex.exe'
-    ].filter(p => p && !p.includes('undefined'));
-    for (const cmdPath of commonPaths) {
-        if (fs.existsSync(cmdPath)) {
-            Logger.info(`✅ 在常见路径找到Codex CLI: ${cmdPath}`);
-            availableMethods.push('npm全局路径');
-            return {
-                command: cmdPath,
-                args: [],
-                isProjectLocal: false,
-                availableMethods
-            };
-        }
+    else {
+        Logger.info(`用户编译版本未找到，检查的路径: ${possiblePaths.join(', ')}`);
     }
     // 🔄 方案2: 项目内Codex检测 (备用方案)
     Logger.info(`🔄 检测项目内Codex...`);
@@ -151,14 +106,8 @@ function detectCodexPaths() {
     Logger.info(`2. 用户已登录: codex login`);
     Logger.info(`3. PATH环境变量包含npm全局路径`);
     Logger.info(`4. Windows用户: 检查是否有codex.cmd文件`);
-    // 返回默认命令，让executeCommand阶段处理错误
-    availableMethods.push('默认命令(可能失败)');
-    return {
-        command: globalCommand,
-        args: [],
-        isProjectLocal: false,
-        availableMethods
-    };
+    // 所有方案都失败，返回错误提示
+    throw new Error('❌ 无法找到任何可用的Codex CLI！请确认用户本地编译版本可用：H:\A_test\codex\codex-rs\target\release\codex.exe');
 }
 export async function executeCodex(prompt, options = {}, onProgress) {
     const { model, sandbox, approval, image, config, timeout, workingDir, profile, useExec = true } = options;

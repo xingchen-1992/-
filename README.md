@@ -9,18 +9,41 @@
 - **⏱️ 20分钟超时** - 支持大型项目的深度代码分析
 - **🎯 GPT-5驱动** - 基于最强大的AI模型进行代码分析
 - **💡 智能解析** - 自动理解项目结构、组件关系和架构设计
-- **💎 订阅专用** - 专为Codex CLI订阅用户（$200 ChatGPT Plus）定制
+- **🔥 本地编译优先** - 智能检测并优先使用用户本地编译的无审批版本
+- **🚀 Master并行分析** - 支持复杂任务的8路智能并行分解分析
+- **💎 双重支持** - 支持订阅版本和本地编译版本
 
 ## 安装配置
 
-### ⚠️ 重要前提：需要Codex CLI订阅
-本工具专为**已付费订阅用户**设计，需要以下条件：
+### 🎯 支持多种Codex CLI部署方式
+
+**方式一：本地编译版本（推荐，无审批限制）**
+- ✅ 用户自行编译的codex.exe（支持无审批方案）
+- ✅ 牛马MCP自动检测本地编译版本并优先使用
+- ✅ 支持路径：`H:\A_test\_tmp\codex-src\codex-rs\target\release\codex.exe`
+- ✅ 完全自主控制，无需订阅和网络依赖
+
+**方式二：订阅版本（传统方案）**
 - ✅ ChatGPT Plus订阅（$20/月）+ Codex CLI订阅（$200/月）
 - ✅ 已安装Codex CLI：`npm install -g @openai/codex`
 - ✅ 已登录订阅账户：`codex login`
 
 ### 安装步骤
 
+**本地编译版本用户：**
+1. **确保本地编译版本可用**:
+   ```bash
+   # 检查编译版本
+   "H:\A_test\_tmp\codex-src\codex-rs\target\release\codex.exe" --version
+   # 应输出：codex-cli 0.0.0
+   ```
+
+2. **添加牛马MCP到Claude Code**:
+   ```bash
+   claude mcp add 牛马 -- npx -y 牛马
+   ```
+
+**订阅版本用户：**
 1. **验证订阅状态**:
    ```bash
    # 确认已登录订阅账户
@@ -42,7 +65,7 @@
 
 ## 可用工具 (仅安全分析功能)
 
-### ask-codex (主要功能)
+### ask-codex (基础功能)
 **安全的代码分析工具** - 使用GPT-5深度理解和分析代码，纯只读模式确保零风险。
 
 **参数说明:**
@@ -53,7 +76,24 @@
 - `image` (可选): 包含图片文件路径
 - `config` (可选): 配置参数覆盖
 
+### ask-codex-master (🚀 强力功能)
+**牛马Master智能并行分析** - 复杂任务自动分解为8路并行执行，生成完整执行计划。
+
+**核心特性:**
+- 🧠 **智能任务分解** - 复杂需求自动拆分为子任务
+- ⚡ **8路并行执行** - 最大并行任务数，显著提升分析速度
+- 📊 **统一结果汇总** - 自动整合所有并行分析结果
+- 🎯 **本地编译优先** - 自动使用用户本地编译的无审批版本
+- 📋 **完整执行计划** - 生成详细的任务分解和执行报告
+
+**参数说明:**
+- `prompt` (必需): 复杂任务需求，将被智能分解为8路并行分析
+- `maxTasks` (固定): 8 (最大并行任务数)
+- `includeAnalysis` (可选): 是否包含详细的分析过程 (默认: true)
+
 **使用示例:**
+
+**基础分析 (ask-codex):**
 ```bash
 # 分析单个文件
 ask-codex "分析这个文件的功能: @main.py"
@@ -65,7 +105,22 @@ ask-codex "分析整个项目的架构设计和依赖关系"
 ask-codex "检查这个函数是否有安全漏洞: @auth.js"
 
 # 性能优化建议
-ask-codx "建议如何优化这段代码的性能: @algorithm.py"
+ask-codex "建议如何优化这段代码的性能: @algorithm.py"
+```
+
+**复杂任务并行分析 (ask-codex-master):**
+```bash
+# 全面项目分析
+ask-codex-master "深度分析整个TTS直播项目的架构、性能瓶颈、安全风险和优化建议"
+
+# 多维度代码审查
+ask-codex-master "全面审查这个电商系统的代码质量、安全性、性能和可维护性"
+
+# 技术方案评估
+ask-codex-master "评估当前微服务架构的优缺点，并提供完整的改进方案"
+
+# 故障排查分析
+ask-codex-master "分析系统性能问题的根本原因，提供完整的排查和解决方案"
 ```
 
 ### 实用工具
@@ -139,12 +194,23 @@ ask-codex "这段代码如何重构能提高可读性: @legacy_code.java"
 
 ### 常见问题
 
-1. **找不到Codex CLI**:
+1. **牛马MCP检测不到本地编译版本**:
+   ```bash
+   # 检查编译版本是否存在
+   "H:\A_test\_tmp\codex-src\codex-rs\target\release\codex.exe" --version
+   
+   # 确保路径正确，牛马MCP会自动检测以下路径：
+   # - H:/A_test/_tmp/codex-src/codex-rs/target/release/codex.exe (主编译版本)
+   # - H:/A_test/_tmp/codex-bin/codex.exe (二进制副本)
+   # - H:/A_test/codex/codex-rs/target/release/codex.exe (备用路径)
+   ```
+
+2. **找不到Codex CLI (订阅用户)**:
    ```bash
    npm install -g @openai/codex
    ```
 
-2. **身份验证失败**:
+3. **身份验证失败 (订阅用户)**:
    ```bash
    # 设置API密钥
    export OPENAI_API_KEY=your-key
@@ -153,13 +219,18 @@ ask-codex "这段代码如何重构能提高可读性: @legacy_code.java"
    codex login
    ```
 
-3. **权限被拒绝**:
+4. **权限被拒绝**:
    - 牛马代码分析器已锁定为只读模式，无权限问题
    - 如果仍有问题，检查文件读取权限
 
-4. **速率限制**:
+5. **速率限制 (订阅用户)**:
    - 等待后重试
    - 检查OpenAI账户配额 (需要ChatGPT Plus订阅)
+
+6. **Master并行分析失败**:
+   - 检查本地编译版本可用性
+   - 确认系统资源充足（8路并行需要较多内存）
+   - 查看详细错误日志进行排查
 
 ### 调试模式
 启用详细日志：
