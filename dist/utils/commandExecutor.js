@@ -4,20 +4,65 @@ export async function executeCommand(command, args, onProgress, timeout) {
     return new Promise((resolve, reject) => {
         const startTime = Date.now();
         Logger.commandExecution(command, args, startTime);
-        // 🔧 Windows修复：对于.cmd文件使用cmd包装避免参数解析问题
+        // 🔧 Windows修复：智能参数处理避免CMD包装导致的参数拆分问题
         let finalCommand = command;
         let finalArgs = args;
         if (process.platform === 'win32' && (command.endsWith('.cmd') || command.endsWith('.bat'))) {
-            Logger.info(`🐚 Windows批处理文件使用cmd包装: ${command}`);
-            finalCommand = 'cmd';
-            finalArgs = ['/c', command, ...args];
+            Logger.info(`🐚 Windows批处理文件检测到: ${command}`);
+            // 🚀 重要修复：Windows下所有.cmd文件都必须使用CMD包装执行
+            // 即使是完整路径的.cmd文件也需要通过cmd /c执行，否则会出现spawn EINVAL
+            {
+                // 🔧 关键修复：对包含空格的参数进行Windows CMD兼容转义
+                Logger.info('🔧 应用Windows CMD参数转义修复');
+                finalCommand = 'cmd';
+                // 🔧 优化的智能参数转义：精确处理Windows CMD参数
+                const escapedArgs = args.map(arg => {
+                    // 如果参数已经被正确引用，直接返回
+                    if (arg.startsWith('"') && arg.endsWith('"') && arg.length > 2) {
+                        return arg;
+                    }
+                    // 检查是否需要转义的条件
+                    const needsEscaping = arg.includes(' ') ||
+                        arg.includes('\t') ||
+                        arg.includes('\n') ||
+                        /[\u4e00-\u9fff]/.test(arg) || // 中文字符
+                        /[&|<>^%]/.test(arg) || // CMD特殊字符（移除双引号检查避免双重转义）
+                        arg.length === 0; // 空字符串
+                    if (needsEscaping) {
+                        // 检查是否已经正确引用，避免双重转义
+                        if (arg.startsWith('"') && arg.endsWith('"') && arg.length > 2) {
+                            return arg; // 已经正确引用，直接返回
+                        }
+                        // 转义内部的双引号，避免嵌套引用问题
+                        const escaped = arg.replace(/"/g, '\\"');
+                        return `"${escaped}"`;
+                    }
+                    return arg;
+                });
+                // 🔧 修复CMD参数拆分问题：避免command的引号包围
+                finalArgs = ['/c', command, ...escapedArgs];
+                Logger.info(`🔧 参数转义结果: ${finalArgs.join(' ')}`);
+                Logger.info(`🔧 详细参数分析:`);
+                finalArgs.forEach((arg, index) => {
+                    Logger.info(`  [${index}]: "${arg}" (长度: ${arg.length})`);
+                });
+            }
         }
-        const childProcess = spawn(finalCommand, finalArgs, {
+        // 🔧 增强调试信息
+        Logger.info(`📋 最终执行命令: ${finalCommand}`);
+        Logger.info(`📋 最终参数数组: ${JSON.stringify(finalArgs)}`);
+        Logger.info(`📋 参数总数: ${finalArgs.length}`);
+        // 🔧 智能spawn配置：根据是否使用CMD包装调整参数
+        const spawnOptions = {
             env: process.env,
-            shell: false, // 🔧 修复：使用cmd包装，不需要shell=true
-            stdio: ["pipe", "pipe", "pipe"], // 🔧 修复：启用stdin以响应确认请求
-            cwd: process.cwd(), // 确保工作目录正确
-        });
+            shell: false, // 始终禁用shell模式，使用精确的参数传递
+            stdio: ["pipe", "pipe", "pipe"], // 启用stdin以响应确认请求
+            cwd: process.cwd(),
+            // 🚀 关键修复：在CMD包装模式下禁用windowsVerbatimArguments
+            windowsVerbatimArguments: !(finalCommand === 'cmd' && process.platform === 'win32')
+        };
+        Logger.info(`🔧 Spawn配置: shell=${spawnOptions.shell}, verbatim=${spawnOptions.windowsVerbatimArguments}`);
+        const childProcess = spawn(finalCommand, finalArgs, spawnOptions);
         let stdout = "";
         let stderr = "";
         let isResolved = false;
