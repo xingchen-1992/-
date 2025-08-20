@@ -176,9 +176,22 @@ export async function executeCodex(prompt, options = {}, onProgress) {
         // 使用用户指定的模型，而不是硬编码gpt-5
         args.push(CLI.FLAGS.MODEL, model.trim());
     }
-    // Add sandbox mode
+    // Add sandbox mode and auto-approval handling
     if (sandbox) {
-        args.push(CLI.FLAGS.SANDBOX, sandbox);
+        if (sandbox === 'workspace-write') {
+            // 🔧 修复：workspace-write模式自动添加full-auto标志避免卡在确认提示
+            Logger.info('🚀 workspace-write模式：启用full-auto自动确认');
+            args.push(CLI.FLAGS.FULL_AUTO);
+        }
+        else if (sandbox === 'danger-full-access') {
+            // danger-full-access模式使用bypass标志
+            Logger.info('⚠️  danger-full-access模式：使用dangerously-bypass');
+            args.push(CLI.FLAGS.DANGEROUSLY_BYPASS);
+        }
+        else {
+            // read-only模式正常添加sandbox参数
+            args.push(CLI.FLAGS.SANDBOX, sandbox);
+        }
     }
     // Add approval policy (仅在交互式模式下支持，exec模式忽略)
     if (approval && !useExec) {
@@ -216,9 +229,11 @@ export async function executeCodex(prompt, options = {}, onProgress) {
     if (profile) {
         args.push(CLI.FLAGS.PROFILE, profile);
     }
-    // Add the prompt as the final argument - 简化处理避免双重引用
-    // 让spawn和shell自动处理参数引用，避免手动添加引号导致的解析问题
-    args.push(prompt);
+    // Add the prompt as the final argument - 修复多行prompt处理
+    // 确保多行和复杂prompt作为单个参数传递
+    if (prompt && prompt.trim()) {
+        args.push(prompt.trim());
+    }
     // 添加详细的调试信息 - 使用console.log确保输出
     console.log(`🔧 调试信息:`);
     console.log(`- 命令: ${pathInfo.command}`);
