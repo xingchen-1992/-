@@ -50,7 +50,8 @@ async function sendNotification(method: string, params: any) {
   try {
     await server.notification({ method, params });
   } catch (error) {
-    Logger.error("notification failed: ", error);
+    // 🔧 修复：忽略notification失败，避免阻塞主流程
+    Logger.debug("notification failed (ignored): ", error);
   }
 }
 
@@ -67,7 +68,9 @@ async function sendProgressNotification(
   total?: number,
   message?: string
 ) {
-  if (!progressToken) return; // Only send if client requested progress
+  // 🔧 修复：暂时禁用progress notifications以避免MCP客户端兼容性问题
+  // if (!progressToken) return; // Only send if client requested progress
+  return; // 跳过所有progress notifications
   
   try {
     const params: any = {
@@ -83,7 +86,7 @@ async function sendProgressNotification(
       params
     });
   } catch (error) {
-    Logger.error("Failed to send progress notification:", error);
+    Logger.debug("Failed to send progress notification (ignored):", error);
   }
 }
 

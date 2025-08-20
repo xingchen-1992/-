@@ -48,7 +48,7 @@ export declare const PROTOCOL: {
     readonly NOTIFICATIONS: {
         readonly PROGRESS: "notifications/progress";
     };
-    readonly KEEPALIVE_INTERVAL: 25000;
+    readonly KEEPALIVE_INTERVAL: 10000;
 };
 export declare const CLI: {
     readonly COMMANDS: {

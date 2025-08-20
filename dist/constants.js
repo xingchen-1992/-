@@ -59,8 +59,8 @@ export const PROTOCOL = {
     NOTIFICATIONS: {
         PROGRESS: "notifications/progress",
     },
-    // Timeout prevention
-    KEEPALIVE_INTERVAL: 25000, // 25 seconds
+    // Timeout prevention - 更频繁的keep-alive以防止MCP客户端超时
+    KEEPALIVE_INTERVAL: 10000, // 10 seconds
 };
 // CLI Constants
 export const CLI = {

@@ -112,16 +112,17 @@ export async function executeCommand(
         try {
           const event = JSON.parse(line);
           if (event.msg?.type === 'apply_patch_approval_request') {
-            // 自动发送批准响应
+            // 自动发送批准响应，包含call_id
             const approval = JSON.stringify({
               type: "patch_approval",
               id: event.id,
+              call_id: event.msg.call_id,
               decision: "approved"
             }) + '\n';
             
             if (childProcess.stdin && !childProcess.stdin.destroyed) {
               childProcess.stdin.write(approval);
-              Logger.info(`🤖 自动批准补丁申请: ${event.id}`);
+              Logger.info(`🤖 自动批准补丁申请: ${event.id} (call_id: ${event.msg.call_id})`);
             }
           }
         } catch (error) {
