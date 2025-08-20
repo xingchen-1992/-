@@ -12,7 +12,7 @@ const execCodexArgsSchema = z.object({
   prompt: z.string().min(1).describe("Command or instruction for non-interactive Codex execution"),
   model: z.string().optional().describe(`Model to use: ${Object.values(MODELS).join(', ')}`),
   sandbox: z.string().optional().describe(`Sandbox mode: ${Object.values(SANDBOX_MODES).join(', ')}`),
-  timeout: z.number().optional().describe("Maximum execution time in milliseconds (optional)"),
+  timeout: z.number().optional().describe("Maximum execution time in milliseconds (optional, default: 180000ms/3min)"),
   workingDir: z.string().optional().describe("Working directory for execution"),
 });
 
@@ -44,12 +44,15 @@ export const execCodexTool: UnifiedTool = {
         onProgress(`${STATUS_MESSAGES.PROCESSING_START} (non-interactive mode, sandbox: ${effectiveSandbox})`);
       }
 
+      // 🔧 修复：设置合理的默认超时时间（3分钟）用于复杂任务
+      const effectiveTimeout = timeout || 180000; // 3分钟默认超时
+
       const result = await executeCodex(
         prompt as string,
         {
           model: model as string,
           sandbox: effectiveSandbox as string,
-          timeout: timeout as number,
+          timeout: effectiveTimeout,
           workingDir: workingDir as string,
           useExec: true
         },

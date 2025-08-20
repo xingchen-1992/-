@@ -61,7 +61,7 @@ const askCodexArgsSchema = z.object({
     approval: z.string().optional().describe(`Approval policy: ${Object.values(APPROVAL_POLICIES).join(', ')}. Defaults to untrusted for safety.`),
     image: z.union([z.string(), z.array(z.string())]).optional().describe("Optional image file path(s) to include with the prompt"),
     config: z.union([z.string(), z.record(z.any())]).optional().describe("Configuration overrides as 'key=value' string or object"),
-    timeout: z.number().optional().describe("Maximum execution time in milliseconds (optional)"),
+    timeout: z.number().optional().describe("Maximum execution time in milliseconds (optional, default: 180000ms/3min)"),
     workingDir: z.string().optional().describe("Working directory for Codex execution"),
     profile: z.string().optional().describe("Configuration profile to use from ~/.codex/config.toml"),
     includeThinking: z.boolean().default(true).describe("Include reasoning/thinking section in response"),
@@ -90,13 +90,15 @@ export const askCodexTool = {
             if (onProgress) {
                 onProgress(`Executing Codex with ${modelName} in ${sandboxMode} mode...`);
             }
+            // 🔧 修复：设置合理的默认超时时间（3分钟）用于复杂任务
+            const effectiveTimeout = timeout || 180000; // 3分钟默认超时
             const result = await executeCodex(enhancedPrompt, {
                 model: model, // 只有用户明确指定时才传递
                 sandbox: sandbox,
                 approval: approval,
                 image,
                 config,
-                timeout: timeout,
+                timeout: effectiveTimeout,
                 workingDir: workingDir,
                 profile: profile,
                 useExec: true
