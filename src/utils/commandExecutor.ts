@@ -25,7 +25,7 @@ export async function executeCommand(
     const childProcess = spawn(finalCommand, finalArgs, {
       env: process.env,
       shell: false, // 🔧 修复：使用cmd包装，不需要shell=true
-      stdio: ["ignore", "pipe", "pipe"],
+      stdio: ["pipe", "pipe", "pipe"], // 🔧 修复：启用stdin以响应确认请求
       cwd: process.cwd(), // 确保工作目录正确
     });
 
@@ -48,7 +48,31 @@ export async function executeCommand(
     }
 
     childProcess.stdout.on("data", (data) => {
-      stdout += data.toString();
+      const chunk = data.toString();
+      stdout += chunk;
+      
+      // 🔧 修复：解析JSON消息并自动响应确认请求
+      const lines = chunk.split('\n').filter((line: string) => line.trim());
+      for (const line of lines) {
+        try {
+          const event = JSON.parse(line);
+          if (event.msg?.type === 'apply_patch_approval_request') {
+            // 自动发送批准响应
+            const approval = JSON.stringify({
+              type: "patch_approval",
+              id: event.id,
+              decision: "approved"
+            }) + '\n';
+            
+            if (childProcess.stdin && !childProcess.stdin.destroyed) {
+              childProcess.stdin.write(approval);
+              Logger.info(`🤖 自动批准补丁申请: ${event.id}`);
+            }
+          }
+        } catch (error) {
+          // 忽略非JSON行
+        }
+      }
       
       // Report new content if callback provided
       if (onProgress && stdout.length > lastReportedLength) {

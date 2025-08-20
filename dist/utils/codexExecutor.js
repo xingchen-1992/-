@@ -170,26 +170,29 @@ export async function executeCodex(prompt, options = {}, onProgress) {
     // Add exec subcommand for non-interactive mode
     if (useExec) {
         args.push('exec');
+        // 🔧 修复：exec模式必须添加--json标志确保结构化输出
+        args.push('--json');
     }
     // Add model selection - 只在明确指定时添加
     if (model && model.trim()) {
         // 使用用户指定的模型，而不是硬编码gpt-5
         args.push(CLI.FLAGS.MODEL, model.trim());
     }
-    // Add sandbox mode and auto-approval handling
+    // 🔧 修复：正确处理沙箱模式和bypass参数组合
     if (sandbox) {
         if (sandbox === 'workspace-write') {
-            // 🔧 修复：workspace-write模式自动添加full-auto标志避免卡在确认提示
-            Logger.info('🚀 workspace-write模式：启用full-auto自动确认');
-            args.push(CLI.FLAGS.FULL_AUTO);
+            // 🔧 修复：workspace-write模式使用bypass标志完全跳过确认
+            Logger.info('🚀 workspace-write模式：使用dangerously-bypass完全跳过确认');
+            args.push(CLI.FLAGS.DANGEROUSLY_BYPASS);
         }
         else if (sandbox === 'danger-full-access') {
-            // danger-full-access模式使用bypass标志
+            // danger-full-access模式：添加沙箱参数 + dangerously-bypass标志
             Logger.info('⚠️  danger-full-access模式：使用dangerously-bypass');
+            args.push(CLI.FLAGS.SANDBOX, sandbox);
             args.push(CLI.FLAGS.DANGEROUSLY_BYPASS);
         }
         else {
-            // read-only模式正常添加sandbox参数
+            // read-only模式或其他模式：正常添加沙箱参数
             args.push(CLI.FLAGS.SANDBOX, sandbox);
         }
     }
