@@ -37,18 +37,23 @@ export const helpTool = {
 
 ## Available Tools
 
-### ask-codex 
-🔒 安全代码分析工具 - 使用GPT-5进行纯只读代码分析
+### ask-codex
+🔒 单路代码分析工具 - 使用GPT-5进行纯只读代码分析
 - **prompt** (required): 分析指令或问题
 - **model**: 固定使用gpt-5模型
 - **sandbox**: 🔒 锁定read-only安全模式
-- **image** (optional): 包含图片文件路径  
-- **config** (optional): 配置参数覆盖
-- **timeout**: 最大15分钟超时保护（根据复杂度自动调整）
+- **timeout**: 最大15分钟超时保护
+
+### ask-codex-master
+🎯 Master智能并行分析 - 复杂任务8路并行执行
+- **prompt** (required): 复杂分析需求（自动分解并行）
+- **includeAnalysis** (optional): 是否包含详细分析过程
+- **并行能力**: 自动8路并行，3-5倍速度提升
+- **适用场景**: 全项目分析、架构审查、问题诊断
 
 ### ping
-Test MCP server connection.
-- **message** (optional): Message to echo
+测试MCP服务器连接
+- **message** (optional): 回显消息
 
 ## Configuration
 
