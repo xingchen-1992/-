@@ -1,11 +1,13 @@
 // Tool Registry Index - Registers all tools
 import { toolRegistry } from './registry.js';
 import { askCodexTool } from './ask-codex.tool.js';
-import { execCodexTool } from './exec-codex.tool.js';
-import { applyDiffTool } from './apply-diff.tool.js';
 import { pingTool, helpTool, versionTool } from './simple-tools.js';
-// Register all tools
-toolRegistry.push(askCodexTool, execCodexTool, applyDiffTool, pingTool, helpTool, versionTool);
+// 🔒 安全配置：仅注册安全代码分析工具
+toolRegistry.push(askCodexTool, // ✅ 代码分析功能
+pingTool, // ✅ 连接测试
+helpTool, // ✅ 帮助信息
+versionTool // ✅ 版本信息
+);
 // Export everything from registry
 export * from './registry.js';
 //# sourceMappingURL=index.js.map

@@ -6,7 +6,7 @@ import { Logger } from "./utils/logger.js";
 import { PROTOCOL } from "./constants.js";
 import { getToolDefinitions, getPromptDefinitions, executeTool, toolExists, getPromptMessage } from "./tools/index.js";
 const server = new Server({
-    name: "codex-cli-mcp",
+    name: "牛马",
     version: "1.0.5",
 }, {
     capabilities: {
@@ -186,10 +186,10 @@ server.setRequestHandler(GetPromptRequestSchema, async (request) => {
 });
 // Start the server
 async function main() {
-    Logger.debug("init codex-cli-mcp-tool");
+    Logger.debug("init 牛马代码分析器");
     const transport = new StdioServerTransport();
     await server.connect(transport);
-    Logger.debug("codex-cli-mcp-tool listening on stdio");
+    Logger.debug("牛马代码分析器 listening on stdio");
 }
 main().catch((error) => {
     Logger.error("Fatal error:", error);

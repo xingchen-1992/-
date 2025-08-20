@@ -37,26 +37,14 @@ export const helpTool = {
 
 ## Available Tools
 
-### ask-codex
-Execute OpenAI Codex with comprehensive parameter support.
-- **prompt** (required): Your query or instruction
-- **model** (optional): gpt-5, o3, o3-mini, oss
-- **sandbox** (optional): read-only, workspace-write, danger-full-access
-- **approval** (optional): untrusted, on-failure, on-request, never
-- **image** (optional): Image file path(s) to include
-- **config** (optional): Configuration overrides
-- **timeout** (optional): Maximum execution time (default: 120s)
-
-### exec-codex
-Non-interactive Codex execution for automation.
-- **prompt** (required): Command or instruction
-- **model** (optional): Model to use
-- **sandbox** (optional): Sandbox mode
-
-### apply-diff
-Apply latest Codex-generated diff to git repository.
-- **dryRun** (optional): Preview changes without applying
-- **validate** (optional): Validate before applying
+### ask-codex 
+🔒 安全代码分析工具 - 使用GPT-5进行纯只读代码分析
+- **prompt** (required): 分析指令或问题
+- **model**: 固定使用gpt-5模型
+- **sandbox**: 🔒 锁定read-only安全模式
+- **image** (optional): 包含图片文件路径  
+- **config** (optional): 配置参数覆盖
+- **timeout**: 最大15分钟超时保护（根据复杂度自动调整）
 
 ### ping
 Test MCP server connection.

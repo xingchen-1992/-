@@ -48,7 +48,7 @@ function buildCodexPrompt(userPrompt: string, config: {
   model?: string;
   sandbox?: string;
 }): string {
-  const { includeThinking = true, includeMetadata = true, model, sandbox } = config;
+  const { includeThinking = true, includeMetadata = true } = config;
   
   // Add output formatting instructions to ensure consistent responses
   let enhancedPrompt = userPrompt;
@@ -77,26 +77,35 @@ function buildCodexPrompt(userPrompt: string, config: {
 const askCodexArgsSchema = z.object({
   prompt: z.string().min(1).describe("User query or instruction for Codex. Can include file references and complex requests."),
   model: z.string().optional().describe(`Optional model to use. Options: ${Object.values(MODELS).join(', ')}. Defaults to gpt-5.`),
-  sandbox: z.string().optional().describe(`Sandbox mode: ${Object.values(SANDBOX_MODES).join(', ')}. Defaults to read-only for safety.`),
+  sandbox: z.literal("read-only").optional().describe("🔒 Security: Locked to read-only mode for safe code analysis only"),
   approval: z.string().optional().describe(`Approval policy: ${Object.values(APPROVAL_POLICIES).join(', ')}. Defaults to untrusted for safety.`),
   image: z.union([z.string(), z.array(z.string())]).optional().describe("Optional image file path(s) to include with the prompt"),
   config: z.union([z.string(), z.record(z.any())]).optional().describe("Configuration overrides as 'key=value' string or object"),
-  timeout: z.number().optional().describe("Maximum execution time in milliseconds (optional, default: 180000ms/3min)"),
-  workingDir: z.string().optional().describe("Working directory for Codex execution"),
-  profile: z.string().optional().describe("Configuration profile to use from ~/.codex/config.toml"),
-  includeThinking: z.boolean().default(true).describe("Include reasoning/thinking section in response"),
-  includeMetadata: z.boolean().default(true).describe("Include configuration metadata in response"),
+  // timeout: 固定15分钟，不允许用户自定义
+  // timeout: z.number().optional().describe("Fixed 15-minute timeout for analysis"),
+  workingDir: z.string().optional().describe("Working directory for command execution"),
+  profile: z.string().optional().describe("Configuration profile to use"),
+  includeThinking: z.boolean().optional().describe("Include reasoning in response"),
+  includeMetadata: z.boolean().optional().describe("Include metadata in response")
 });
 
 export const askCodexTool: UnifiedTool = {
-  name: "ask-codex",
-  description: "Execute OpenAI Codex with comprehensive parameter support for code analysis, generation, and assistance",
+  name: 'ask-codex',
+  description: '🔒 Safe Code Analysis: Read-only Codex CLI access for secure code analysis and review (no file modifications)',
   zodSchema: askCodexArgsSchema,
-  prompt: {
-    description: "Execute Codex AI agent for code analysis, generation, debugging, and assistance with full parameter control",
-  },
   category: 'codex',
-  execute: async (args, onProgress) => {
+  
+  prompt: {
+    description: 'Ask Codex to analyze code, answer questions, or process files with intelligent responses',
+    arguments: [
+      { name: 'prompt', description: 'Your question or request for Codex', required: true },
+      { name: 'model', description: 'Model to use (defaults to gpt-5)', required: false },
+      { name: 'sandbox', description: 'Sandbox mode for safety', required: false },
+      { name: 'approval', description: 'Approval policy', required: false }
+    ]
+  },
+
+  async execute(args, onProgress) {
     const { 
       prompt, 
       model, 
@@ -104,44 +113,42 @@ export const askCodexTool: UnifiedTool = {
       approval, 
       image, 
       config, 
-      timeout, 
-      workingDir, 
+      // 固定15分钟超时，不允许用户自定义
+      workingDir,
       profile,
-      includeThinking,
-      includeMetadata
+      includeThinking = true,
+      includeMetadata = true
     } = args;
 
-    if (!prompt?.trim()) {
-      throw new Error("You must provide a valid query or instruction for Codex analysis");
-    }
-
     try {
-      // Build enhanced prompt with formatting instructions
-      // 临时简化：直接使用原始prompt进行调试
-      const enhancedPrompt = prompt.trim() as string;
-
-      // Detailed progress reporting
-      const modelName = (model as string) || 'gpt-5';
-      const sandboxMode = (sandbox as string) || 'read-only';
+      onProgress?.(STATUS_MESSAGES.STARTING_CODEX);
       
-      if (onProgress) {
-        onProgress(`Executing Codex with ${modelName} in ${sandboxMode} mode...`);
+      // Validate prompt is available
+      if (!prompt) {
+        throw new Error('Prompt is required');
       }
 
-      // 🔧 修复：设置合理的默认超时时间（3分钟）用于复杂任务
-      const effectiveTimeout = timeout || 180000; // 3分钟默认超时
+      // Build enhanced prompt with formatting instructions
+      const enhancedPrompt = buildCodexPrompt(prompt, {
+        includeThinking: Boolean(includeThinking),
+        includeMetadata: Boolean(includeMetadata),
+        model: typeof model === 'string' ? model : undefined,
+        sandbox: typeof sandbox === 'string' ? sandbox : undefined
+      });
+
+      const effectiveTimeout = 900000; // 最大15分钟超时限制，实际根据复杂度自动调整
 
       const result = await executeCodex(
         enhancedPrompt,
         {
-          model: model as string, // 只有用户明确指定时才传递
-          sandbox: sandbox as string,
-          approval: approval as string,
+          model: typeof model === 'string' ? model : undefined,
+          sandbox: "read-only", // 🔒 强制只读模式，禁用文件修改
+          approval: typeof approval === 'string' ? approval : undefined,
           image,
           config,
           timeout: effectiveTimeout,
-          workingDir: workingDir as string,
-          profile: profile as string,
+          workingDir: typeof workingDir === 'string' ? workingDir : undefined,
+          profile: typeof profile === 'string' ? profile : undefined,
           useExec: true
         },
         onProgress
@@ -150,8 +157,8 @@ export const askCodexTool: UnifiedTool = {
       // Format response for MCP
       const formattedResponse = formatCodexResponseForMCP(
         result, 
-        includeThinking as boolean, 
-        includeMetadata as boolean
+        Boolean(includeThinking), 
+        Boolean(includeMetadata)
       );
 
       return formattedResponse;
@@ -195,7 +202,7 @@ npm install -g @openai/codex
         return `❌ **Request Timeout**: Operation took longer than expected
 
 **Solutions:**
-1. **Increase timeout:** Add \`timeout: 300000\` (5 minutes)
+1. **分析超时:** 最大15分钟超时保护，复杂分析可能需要更多时间
 2. **Simplify request:** Break complex queries into smaller parts  
 3. **Retry request:** GPT-5 is the only supported model
 4. **Check connectivity:** Ensure stable internet connection`;
@@ -205,9 +212,9 @@ npm install -g @openai/codex
         return `❌ **Permission Error**: ${ERROR_MESSAGES.SANDBOX_VIOLATION}
 
 **Permission Solutions:**
-1. **Relax sandbox:** Use \`sandbox: "${SANDBOX_MODES.WORKSPACE_WRITE}"\`
-2. **Approval policy:** Try \`approval: "${APPROVAL_POLICIES.ON_REQUEST}"\`  
-3. **Full access:** Use \`sandbox: "${SANDBOX_MODES.DANGER_FULL_ACCESS}"\` (caution!)
+1. **Only read-only mode available:** This tool is configured for safe code analysis only
+2. **No file modifications:** File write operations have been disabled for security
+3. **Analysis only:** Use this tool for reading and understanding code structure
 4. **Check file permissions:** Ensure Codex can access target files`;
       }
 
@@ -224,10 +231,10 @@ npm install -g @openai/codex
       return `❌ **Codex Execution Error**: ${errorMessage}
 
 **Request Configuration:**
-- **Model:** ${model || 'gpt-5 (default)'}
-- **Sandbox:** ${sandbox || 'read-only (default)'}  
-- **Approval:** ${approval || 'untrusted (default)'}
-- **Working Directory:** ${workingDir || 'current directory'}
+- **Model:** ${typeof model === 'string' ? model : 'gpt-5 (default)'}
+- **Sandbox:** ${typeof sandbox === 'string' ? sandbox : 'read-only (default)'}  
+- **Approval:** ${typeof approval === 'string' ? approval : 'untrusted (default)'}
+- **Working Directory:** ${typeof workingDir === 'string' ? workingDir : 'current directory'}
 
 **Debug Steps:**
 1. Verify Codex CLI installation: \`codex --version\`

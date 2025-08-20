@@ -1,11 +1,11 @@
 export declare const LOG_PREFIX = "[CODEX-MCP]";
 export declare const ERROR_MESSAGES: {
     readonly QUOTA_EXCEEDED: "Rate limit exceeded";
-    readonly AUTHENTICATION_FAILED: "Authentication failed - please check your OpenAI API key or login status";
-    readonly CODEX_NOT_FOUND: "Codex CLI not found - please install with 'npm install -g @openai/codex'";
+    readonly AUTHENTICATION_FAILED: "Codex CLI认证失败，请运行：codex login 重新登录您的订阅账户";
+    readonly CODEX_NOT_FOUND: "请确保已登录Codex CLI订阅账户：codex login";
     readonly TOOL_NOT_FOUND: "not found in registry";
     readonly NO_PROMPT_PROVIDED: "Please provide a prompt for analysis. Use @ syntax to include files (e.g., '@largefile.js explain what this does') or ask general questions";
-    readonly SANDBOX_VIOLATION: "Operation blocked by sandbox policy";
+    readonly SANDBOX_VIOLATION: "牛马仅支持read-only安全模式";
     readonly UNSAFE_COMMAND: "Command requires approval or elevated permissions";
 };
 export declare const STATUS_MESSAGES: {
@@ -16,14 +16,13 @@ export declare const STATUS_MESSAGES: {
     readonly PROCESSING_START: "🔍 Starting analysis (may take time for complex requests)";
     readonly PROCESSING_CONTINUE: "⏳ Still processing... Codex is working on your request";
     readonly PROCESSING_COMPLETE: "✅ Analysis completed successfully";
+    readonly STARTING_CODEX: "🚀 Starting Codex analysis...";
 };
 export declare const MODELS: {
     readonly GPT5: "gpt-5";
 };
 export declare const SANDBOX_MODES: {
     readonly READ_ONLY: "read-only";
-    readonly WORKSPACE_WRITE: "workspace-write";
-    readonly DANGER_FULL_ACCESS: "danger-full-access";
 };
 export declare const APPROVAL_POLICIES: {
     readonly UNTRUSTED: "untrusted";

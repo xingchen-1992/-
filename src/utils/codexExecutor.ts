@@ -247,21 +247,12 @@ export async function executeCodex(
     args.push(CLI.FLAGS.MODEL, model.trim());
   }
   
-  // 🔧 修复：正确处理沙箱模式和bypass参数组合
+  // 🔒 安全沙箱：仅支持read-only模式
   if (sandbox) {
-    if (sandbox === 'workspace-write') {
-      // 🔧 修复：workspace-write模式使用bypass标志完全跳过确认
-      Logger.info('🚀 workspace-write模式：使用dangerously-bypass完全跳过确认');
-      args.push(CLI.FLAGS.DANGEROUSLY_BYPASS);
-    } else if (sandbox === 'danger-full-access') {
-      // danger-full-access模式：添加沙箱参数 + dangerously-bypass标志
-      Logger.info('⚠️  danger-full-access模式：使用dangerously-bypass');
-      args.push(CLI.FLAGS.SANDBOX, sandbox);
-      args.push(CLI.FLAGS.DANGEROUSLY_BYPASS);
-    } else {
-      // read-only模式或其他模式：正常添加沙箱参数
-      args.push(CLI.FLAGS.SANDBOX, sandbox);
+    if (sandbox !== 'read-only') {
+      throw new Error(ERROR_MESSAGES.SANDBOX_VIOLATION);
     }
+    args.push(CLI.FLAGS.SANDBOX, 'read-only');
   }
   
   // Add approval policy (仅在交互式模式下支持，exec模式忽略)
@@ -447,14 +438,6 @@ export function getModelFallbacks(_model: string): string[] {
 }
 
 export function getSandboxFallbacks(sandbox: string): string[] {
-  switch (sandbox) {
-    case SANDBOX_MODES.DANGER_FULL_ACCESS:
-      return [SANDBOX_MODES.WORKSPACE_WRITE, SANDBOX_MODES.READ_ONLY];
-    case SANDBOX_MODES.WORKSPACE_WRITE:
-      return [SANDBOX_MODES.READ_ONLY];
-    case SANDBOX_MODES.READ_ONLY:
-      return []; // No fallback - safest mode
-    default:
-      return [SANDBOX_MODES.READ_ONLY];
-  }
+  // 🔒 安全限制：仅支持只读模式
+  return [SANDBOX_MODES.READ_ONLY]; // 始终返回只读模式
 }

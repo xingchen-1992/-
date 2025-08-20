@@ -1,11 +1,11 @@
 {
-  "name": "codex-cli-mcp-tool",
+  "name": "牛马",
   "version": "1.0.5",
-  "description": "MCP server for OpenAI Codex CLI integration",
+  "description": "🔒 牛马代码分析器 - 专注于安全的只读代码分析，基于GPT-5驱动",
   "type": "module",
   "main": "dist/index.js",
   "bin": {
-    "codex-cli-mcp-tool": "dist/index.js"
+    "牛马": "dist/index.js"
   },
   "scripts": {
     "build": "tsc",
@@ -24,16 +24,16 @@
     "ai",
     "llm"
   ],
-  "author": "Mr-Tomahawk",
+  "author": "重生2025",
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/Mr-Tomahawk/codex-cli-mcp-tool.git"
+    "url": "git+https://github.com/重生2025/牛马.git"
   },
   "bugs": {
-    "url": "https://github.com/Mr-Tomahawk/codex-cli-mcp-tool/issues"
+    "url": "https://github.com/重生2025/牛马/issues"
   },
-  "homepage": "https://github.com/Mr-Tomahawk/codex-cli-mcp-tool#readme",
+  "homepage": "https://github.com/重生2025/牛马#readme",
   "engines": {
     "node": ">=16.0.0"
   },

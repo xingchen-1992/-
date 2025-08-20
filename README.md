@@ -1,92 +1,90 @@
-# Codex CLI MCP Server
+# 🐂 牛马代码分析器
 
-An MCP server that allows Claude Code to interact with the OpenAI Codex CLI. If you have a ChatGPT subscription and a claude code subscription, you can use this tool to get the benefits of both, as a $20 ChatGPT subscription gives you access to GPT-5 for free in Codex CLI.
+🔒 专注于安全代码分析的MCP工具。基于OpenAI Codex CLI深度定制，仅保留只读分析功能，移除所有文件修改能力。让你安全地使用GPT-5进行代码审查和架构分析。
 
-## Features
+## 🛡️ 安全特性
 
-- **Complete Codex Integration**: Access all Codex CLI capabilities through MCP
-- **GPT-5 Model**: Powered by OpenAI's most capable model
-- **Sandbox Safety**: Configurable execution modes (read-only, workspace-write, full-access)
-- **Progress Tracking**: Real-time updates for long-running operations
-- **Git Integration**: Apply Codex-generated diffs directly to repositories
-- **Flexible Configuration**: Environment variables and config file support
+- **🔒 纯代码分析** - 专注代码理解和架构分析，绝无文件修改风险
+- **🔐 强制只读模式** - 锁定read-only沙箱，确保100%安全
+- **⏱️ 20分钟超时** - 支持大型项目的深度代码分析
+- **🎯 GPT-5驱动** - 基于最强大的AI模型进行代码分析
+- **💡 智能解析** - 自动理解项目结构、组件关系和架构设计
+- **💎 订阅专用** - 专为Codex CLI订阅用户（$200 ChatGPT Plus）定制
 
-## Installation
+## 安装配置
 
-1. **Install Codex CLI** (required):
+### ⚠️ 重要前提：需要Codex CLI订阅
+本工具专为**已付费订阅用户**设计，需要以下条件：
+- ✅ ChatGPT Plus订阅（$20/月）+ Codex CLI订阅（$200/月）
+- ✅ 已安装Codex CLI：`npm install -g @openai/codex`
+- ✅ 已登录订阅账户：`codex login`
+
+### 安装步骤
+
+1. **验证订阅状态**:
    ```bash
-   npm install -g @openai/codex
-   ```
-
-2. **Add to Claude Code using npx**:
-   ```bash
-   claude mcp add codex-cli-mcp-tool -- npx -y codex-cli-mcp-tool
-   ```
-   
-   Or install globally first:
-   ```bash
-   npm install -g codex-cli-mcp-tool
-   ```
-
-3. **Configure Authentication**:
-   ```bash
-   # Option 1: Use API key
-   export OPENAI_API_KEY=your-api-key
-
-   # Option 2: Login with ChatGPT account
+   # 确认已登录订阅账户
    codex login
+   
+   # 测试订阅状态
+   codex --help
    ```
 
-## Available Tools
+2. **添加到Claude Code**:
+   ```bash
+   # 方法1：使用npx (推荐)
+   claude mcp add 牛马 -- npx -y 牛马
+   
+   # 方法2：全局安装后添加
+   npm install -g 牛马
+   claude mcp add 牛马 -- 牛马
+   ```
 
-### ask-codex
-Execute Codex with comprehensive parameter support for code analysis, generation, and assistance.
+## 可用工具 (仅安全分析功能)
 
-**Parameters:**
-- `prompt` (required): Your query or instruction
-- `model` (optional): gpt-5 (default and only supported model)
-- `sandbox` (optional): read-only, workspace-write, danger-full-access
-- `approval` (optional): untrusted, on-failure, on-request, never
-- `image` (optional): Image file path(s) to include
-- `config` (optional): Configuration overrides
-- `timeout` (optional): Maximum execution time
+### ask-codex (主要功能)
+**安全的代码分析工具** - 使用GPT-5深度理解和分析代码，纯只读模式确保零风险。
 
-**Example:**
-```
-ask-codex "Explain this code: @main.py" sandbox="read-only"
-```
+**参数说明:**
+- `prompt` (必需): 分析指令或问题
+- `model` (可选): gpt-5 (默认且唯一支持的模型)
+- `sandbox` (固定): read-only (强制只读，无法修改)
+- `timeout` (可选): 超时时间 (默认20分钟)
+- `image` (可选): 包含图片文件路径
+- `config` (可选): 配置参数覆盖
 
-### exec-codex
-Non-interactive Codex execution for automation workflows.
-
-**Parameters:**
-- `prompt` (required): Command or instruction
-- `model` (optional): Always gpt-5
-- `sandbox` (optional): Sandbox mode
-- `timeout` (optional): Execution timeout
-
-### apply-diff
-Apply the latest Codex-generated diff to your git repository.
-
-**Parameters:**
-- `dryRun` (optional): Preview changes without applying
-- `validate` (optional): Validate before applying
-
-### Utility Tools
-- `ping`: Test MCP connection
-- `help`: Show detailed help information
-- `version`: Display version information
-
-## Configuration
-
-### Environment Variables
+**使用示例:**
 ```bash
-OPENAI_API_KEY=sk-...           # OpenAI API key
-CODEX_MODEL=gpt-5               # Default model
-CODEX_SANDBOX_MODE=read-only    # Default sandbox mode
+# 分析单个文件
+ask-codex "分析这个文件的功能: @main.py"
+
+# 项目架构分析
+ask-codex "分析整个项目的架构设计和依赖关系"
+
+# 代码质量检查
+ask-codex "检查这个函数是否有安全漏洞: @auth.js"
+
+# 性能优化建议
+ask-codx "建议如何优化这段代码的性能: @algorithm.py"
 ```
 
-### Config File (~/.codex/config.toml)
+### 实用工具
+- `ping`: 测试MCP连接状态
+- `help`: 显示详细帮助信息
+- `version`: 显示版本信息
+
+**✅ 安全保证**: 物理删除所有危险代码，仅保留安全的只读分析功能。
+
+## 配置说明
+
+### 环境变量
+```bash
+OPENAI_API_KEY=sk-...           # OpenAI API密钥
+CODEX_MODEL=gpt-5               # 默认模型 (固定)
+CODEX_SANDBOX_MODE=read-only    # 沙箱模式 (固定只读)
+```
+
+### 配置文件 (~/.codex/config.toml)
 ```toml
 [model]
 provider = "openai"
@@ -94,115 +92,116 @@ default = "gpt-5"
 reasoning_effort = "medium"
 
 [sandbox]
-default_mode = "read-only"
+default_mode = "read-only"      # 强制只读模式
 permissions = ["disk-read-access"]
 
-[approval]
-policy = "untrusted"
-trusted_commands = ["ls", "cat", "grep"]
+[security]
+# 牛马代码分析器安全配置
+allow_file_write = false        # 禁用文件写入
+allow_command_exec = false      # 禁用命令执行
+analysis_only = true            # 仅分析模式
 ```
 
-## Sandbox Modes
+## 安全模式说明
 
-- **read-only**: Safe exploration, no file modifications
-- **workspace-write**: Limited modifications within project
-- **danger-full-access**: Full system access (requires confirmation)
+- **🔒 read-only**: 唯一支持的安全模式，可安全浏览和分析代码，无任何修改风险
+- **❌ workspace-write**: 已禁用 - 防止意外文件修改
+- **❌ danger-full-access**: 已禁用 - 防止系统访问风险
 
-## Examples
+## 使用示例
 
-### Code Analysis
-```
-ask-codex "Review this function for security issues: @auth.py"
-```
-
-### Code Generation
-```
-ask-codex "Generate unit tests for the User class" sandbox="workspace-write"
+### 代码安全审查
+```bash
+ask-codex "检查这个认证函数是否有安全漏洞: @auth.py"
 ```
 
-### Debugging
-```
-ask-codex "Fix the bug in login function" approval="on-request"
-```
-
-### File Operations
-```
-ask-codex "Create a new React component for user profile" sandbox="workspace-write"
+### 架构分析
+```bash
+ask-codex "分析这个项目的整体架构和模块依赖关系"
 ```
 
-### Apply Changes
+### 性能分析
+```bash
+ask-codex "分析这个算法的时间复杂度: @sort_algorithm.js"
 ```
-ask-codex "Refactor this code to use async/await"
-apply-diff validate=true
+
+### 代码理解
+```bash
+ask-codex "解释这个复杂函数的工作原理: @complex_function.py"
 ```
 
-## Troubleshooting
+### 重构建议
+```bash
+ask-codex "这段代码如何重构能提高可读性: @legacy_code.java"
+```
 
-### Common Issues
+## 故障排除
 
-1. **Codex CLI not found**:
+### 常见问题
+
+1. **找不到Codex CLI**:
    ```bash
    npm install -g @openai/codex
    ```
 
-2. **Authentication failed**:
+2. **身份验证失败**:
    ```bash
-   # Set API key
+   # 设置API密钥
    export OPENAI_API_KEY=your-key
    
-   # Or login
+   # 或使用账户登录
    codex login
    ```
 
-3. **Permission denied**:
-   - Use appropriate sandbox mode
-   - Check approval policy settings
-   - Verify file permissions
+3. **权限被拒绝**:
+   - 牛马代码分析器已锁定为只读模式，无权限问题
+   - 如果仍有问题，检查文件读取权限
 
-4. **Rate limits**:
-   - Wait before retrying
-   - Check OpenAI account quota
+4. **速率限制**:
+   - 等待后重试
+   - 检查OpenAI账户配额 (需要ChatGPT Plus订阅)
 
-### Debug Mode
-Enable debug logging:
+### 调试模式
+启用详细日志：
 ```bash
-DEBUG=true codex-cli-mcp-tool
+DEBUG=true 牛马
 ```
 
-## Development
+## 开发信息
 
-### Setup
+### 项目设置
 ```bash
-git clone <repository>
-cd codex-cli-tool
+git clone https://github.com/重生2025/牛马.git
+cd 牛马
 npm install
 npm run build
 npm run dev
 ```
 
-### Testing
+### 测试
 ```bash
 npm test
 npm run lint
 ```
 
-## Acknowledgments
+## 致谢
 
-This project is based on the excellent [Gemini MCP Tool](https://github.com/jamubc/gemini-mcp-tool) by jamubc. We adapted their architecture and patterns to create this Codex CLI integration.
+本项目基于[Gemini MCP Tool](https://github.com/jamubc/gemini-mcp-tool)优秀架构改造。感谢原作者jamubc的贡献，我们采用了其架构模式并专门针对Codex CLI进行了安全化改造。
 
-## License
+## 许可证
 
-MIT License - see LICENSE file for details.
+MIT许可证 - 详见LICENSE文件。
 
-## Contributing
+## 贡献代码
 
-1. Fork the repository
-2. Create a feature branch
-3. Make your changes
-4. Add tests
-5. Submit a pull request
+1. Fork本仓库
+2. 创建功能分支
+3. 进行修改
+4. 添加测试
+5. 提交Pull Request
 
-## Support
+## 支持
 
-- GitHub Issues: [Report bugs and feature requests](https://github.com/Mr-Tomahawk/codex-cli-mcp-tool/issues)
+- GitHub Issues: [报告bug和功能请求](https://github.com/重生2025/牛马/issues)
 - OpenAI Codex: https://github.com/openai/codex
+- 作者: 重生2025
