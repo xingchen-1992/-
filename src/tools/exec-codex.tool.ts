@@ -31,16 +31,24 @@ export const execCodexTool: UnifiedTool = {
       throw new Error(ERROR_MESSAGES.NO_PROMPT_PROVIDED);
     }
 
+    // 🔧 修复：确保沙盒模式得到正确处理，默认为workspace-write以支持文件操作
+    const effectiveSandbox = sandbox || SANDBOX_MODES.WORKSPACE_WRITE;
+    
+    // 验证沙盒模式
+    if (!Object.values(SANDBOX_MODES).includes(effectiveSandbox as any)) {
+      throw new Error(`Invalid sandbox mode: ${effectiveSandbox}. Valid options: ${Object.values(SANDBOX_MODES).join(', ')}`);
+    }
+
     try {
       if (onProgress) {
-        onProgress(`${STATUS_MESSAGES.PROCESSING_START} (non-interactive mode)`);
+        onProgress(`${STATUS_MESSAGES.PROCESSING_START} (non-interactive mode, sandbox: ${effectiveSandbox})`);
       }
 
       const result = await executeCodex(
         prompt as string,
         {
           model: model as string,
-          sandbox: sandbox as string,
+          sandbox: effectiveSandbox as string,
           timeout: timeout as number,
           workingDir: workingDir as string,
           useExec: true

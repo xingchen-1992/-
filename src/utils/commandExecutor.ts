@@ -1,6 +1,30 @@
 import { spawn } from "child_process";
 import { Logger } from "./logger.js";
 
+/**
+ * 🔧 智能检测是否需要使用shell来执行命令
+ * Windows上的.cmd, .bat文件需要shell，直接可执行文件不需要
+ */
+function shouldUseShell(command: string): boolean {
+  // Windows平台检查
+  if (process.platform === 'win32') {
+    // .cmd, .bat 文件需要shell
+    if (command.endsWith('.cmd') || command.endsWith('.bat')) {
+      Logger.info(`🐚 Windows批处理文件 ${command} 需要shell=true`);
+      return true;
+    }
+    // 路径包含批处理文件也需要shell
+    if (command.includes('.cmd') || command.includes('.bat')) {
+      Logger.info(`🐚 Windows批处理路径 ${command} 需要shell=true`);
+      return true;
+    }
+  }
+  
+  // 其他情况不需要shell
+  Logger.info(`🚫 命令 ${command} 使用shell=false`);
+  return false;
+}
+
 export async function executeCommand(
   command: string,
   args: string[],
@@ -13,7 +37,7 @@ export async function executeCommand(
 
     const childProcess = spawn(command, args, {
       env: process.env,
-      shell: process.platform === 'win32',  // Windows需要shell来执行.cmd文件
+      shell: shouldUseShell(command), // 🔧 修复：智能检测是否需要shell
       stdio: ["ignore", "pipe", "pipe"],
       cwd: process.cwd(), // 确保工作目录正确
     });

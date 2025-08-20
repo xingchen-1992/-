@@ -40,10 +40,47 @@ function detectCodexPaths(): CodexPathInfo {
   
   Logger.info(`检测的命令: 主要=${globalCommand}, 备用=${globalCommandAlt}, 平台=${process.platform}`);
   
-  // 方法1: 直接验证命令可用性 - 修复require问题
+  // 🔧 方法1: 直接使用完整路径优先策略 (Windows spawn修复)
+  Logger.info('优先使用完整路径策略，避免Windows spawn ENOENT问题');
+  
+  // Windows上优先尝试完整路径
+  if (isWindows) {
+    const fullPaths = [
+      'C:\\Users\\Administrator\\AppData\\Roaming\\npm\\codex.cmd',
+      (process.env.APPDATA ? process.env.APPDATA + '\\npm\\codex.cmd' : '')
+    ].filter(p => p);
+    
+    for (const fullPath of fullPaths) {
+      if (fs.existsSync(fullPath)) {
+        try {
+          // 验证完整路径的可用性
+          const result = execSync(`"${fullPath}" --version`, { 
+            encoding: 'utf8', 
+            timeout: 5000,
+            stdio: 'pipe'
+          });
+          
+          if (result && (result.includes('codex-cli') || result.includes('codex'))) {
+            const version = result.trim();
+            Logger.info(`✅ Windows完整路径验证成功: ${version} (路径: ${fullPath})`);
+            availableMethods.push(`Windows完整路径 (${fullPath})`);
+            return {
+              command: fullPath,
+              args: [],
+              isProjectLocal: false,
+              availableMethods
+            };
+          }
+        } catch (error) {
+          Logger.info(`完整路径 ${fullPath} 验证失败: ${error instanceof Error ? error.message : String(error)}`);
+        }
+      }
+    }
+  }
+  
+  // 备用方法: 传统命令检测 (主要用于非Windows或找不到完整路径时)
   for (const cmd of [globalCommand, globalCommandAlt]) {
     try {
-      // 使用顶层导入的execSync，避免ES模块require问题
       const result = execSync(`${cmd} --version`, { 
         encoding: 'utf8', 
         timeout: 5000,
@@ -52,30 +89,12 @@ function detectCodexPaths(): CodexPathInfo {
       
       if (result && (result.includes('codex-cli') || result.includes('codex'))) {
         const version = result.trim();
-        Logger.info(`✅ 找到用户付费的全局Codex CLI: ${version} (命令: ${cmd})`);
+        Logger.info(`✅ 备用方法找到Codex CLI: ${version} (命令: ${cmd})`);
+        Logger.info(`⚠️  注意: 使用命令名称 ${cmd}，可能在Windows spawn中失败`);
         
-        // 获取完整路径以确保spawn能正确执行
-        let fullCommand = cmd;
-        // 直接使用路径检测，避免which模块依赖问题
-        if (isWindows && cmd === 'codex.cmd') {
-          const possiblePaths = [
-            'C:\Users\Administrator\AppData\Roaming\npm\codex.cmd',
-            (process.env.APPDATA ? process.env.APPDATA + '\npm\codex.cmd' : '')
-          ].filter(p => p);
-          
-          // 使用顶层导入的fs模块
-          for (const p of possiblePaths) {
-            if (fs.existsSync(p)) {
-              fullCommand = p;
-              break;
-            }
-          }
-        }
-        
-        Logger.info(`使用完整路径: ${fullCommand}`);
-        availableMethods.push(`全局付费Codex CLI (${cmd})`);
+        availableMethods.push(`备用命令 (${cmd})`);
         return {
-          command: fullCommand,
+          command: cmd,
           args: [],
           isProjectLocal: false,
           availableMethods
