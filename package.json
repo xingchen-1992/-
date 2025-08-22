@@ -1,11 +1,11 @@
 {
-  "name": "牛马",
+  "name": "niuma-codex-mcp",
   "version": "1.0.5",
   "description": "🔒 牛马代码分析器 - 专注于安全的只读代码分析，基于GPT-5驱动",
   "type": "module",
   "main": "dist/index.js",
   "bin": {
-    "牛马": "dist/index.js"
+    "niuma": "dist/index.js"
   },
   "scripts": {
     "build": "tsc",
@@ -28,12 +28,12 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/重生2025/牛马.git"
+    "url": "git+https://github.com/xingchen-1992/-.git"
   },
   "bugs": {
-    "url": "https://github.com/重生2025/牛马/issues"
+    "url": "https://github.com/xingchen-1992/-/issues"
   },
-  "homepage": "https://github.com/重生2025/牛马#readme",
+  "homepage": "https://github.com/xingchen-1992/-#readme",
   "engines": {
     "node": ">=16.0.0"
   },
