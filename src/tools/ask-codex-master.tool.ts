@@ -2,6 +2,7 @@ import { z } from 'zod';
 import { UnifiedTool } from './registry.js';
 import { 牛马Master, ExecutionPlan } from '../master/index.js';
 import { Logger } from '../utils/logger.js';
+import { getProgressFileWriter } from '../utils/progressFileWriter.js';
 import { 
   ERROR_MESSAGES, 
   STATUS_MESSAGES,
@@ -54,6 +55,22 @@ export const askCodexMasterTool: UnifiedTool = {
       // 开始Master调度流程
       onProgress?.('🎯 牛马Master启动：智能分解任务中...');
       
+      // 获取进度文件写入器并显示监控命令
+      const progressWriter = getProgressFileWriter();
+      const progressFile = progressWriter.getFilePath();
+      const monitorScript = "H:\A_test\牛马\scripts\monitor_progress.ps1";
+      
+      // 在Claude Code中显示实时监控指令
+      onProgress?.(`🎯 牛马Master启动：8路智能并行分析
+
+📊 **实时进度监控**: 
+   powershell -ExecutionPolicy Bypass -File "${monitorScript}"
+
+🔗 在新的PowerShell窗口中运行上方命令可查看实时进度
+📁 进度文件: ${progressFile}
+
+🚀 开始任务分解和并行执行...`);
+      
       Logger.info(`🎯 Master工具被调用: ${prompt.substring(0, 100)}...`);
       
       // 创建Master实例
@@ -68,7 +85,7 @@ export const askCodexMasterTool: UnifiedTool = {
       onProgress?.('✅ Master分析完成，生成执行计划');
       
       // 格式化输出给Claude
-      const response = formatMasterResponse(executionPlan, Boolean(includeAnalysis));
+      const response = formatMasterResponse(executionPlan, Boolean(includeAnalysis), progressFile, monitorScript);
       
       Logger.info('🎯 Master工具执行完成');
       
@@ -141,12 +158,39 @@ export const askCodexMasterTool: UnifiedTool = {
 /**
  * 格式化Master响应给Claude
  */
-function formatMasterResponse(plan: ExecutionPlan, includeAnalysis: boolean): string {
-    let response = `# 🎯 牛马Master执行计划\n\n`;
+function formatMasterResponse(plan: ExecutionPlan, includeAnalysis: boolean, progressFile?: string, monitorScript?: string): string {
+    let response = `# 🎯 牛马Master执行计划
+
+`;
+    
+    // 实时进度监控信息（如果提供）
+    if (progressFile && monitorScript) {
+      response += `## 📊 实时进度监控
+
+`;
+      response += `🔗 **PowerShell监控命令**:
+`;
+      response += `\`\`\`powershell
+`;
+      response += `powershell -ExecutionPolicy Bypass -File "${monitorScript}"
+`;
+      response += `\`\`\`
+
+`;
+      response += `📁 **进度文件**: \`${progressFile}\`
+`;
+      response += `📈 运行上方命令可在独立窗口中查看8路并行分析的详细实时进度
+
+`;
+    }
     
     // 执行摘要
-    response += `## 📋 方案摘要\n\n`;
-    response += `${plan.summary}\n\n`;
+    response += `## 📋 方案摘要
+
+`;
+    response += `${plan.summary}
+
+`;
     
     // 执行步骤
     response += `## 🚀 执行步骤\n\n`;

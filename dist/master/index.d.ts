@@ -21,10 +21,19 @@ export interface ExecutionPlan {
 export declare class 牛马Master {
     private readonly MAX_PARALLEL;
     private readonly TIMEOUT;
+    private progressWriter;
     /**
      * 主入口：执行完整的Master调度流程
      */
     execute(claudePrompt: string): Promise<ExecutionPlan>;
+    /**
+     * 更新进度状态
+     */
+    private updateProgress;
+    /**
+     * 基于任务状态更新进度
+     */
+    private updateProgressFromTasks;
     /**
      * 步骤1: 智能分析并分解任务（不使用Codex，直接基于规则）
      */

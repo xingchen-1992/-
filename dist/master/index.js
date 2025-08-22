@@ -1,5 +1,6 @@
 import { Logger } from '../utils/logger.js';
 import { executeCodex } from '../utils/codexExecutor.js';
+import { getProgressFileWriter } from '../utils/progressFileWriter.js';
 /**
  * 牛马Master调度器 - 智能并行分析引擎
  *
@@ -12,30 +13,96 @@ import { executeCodex } from '../utils/codexExecutor.js';
 export class 牛马Master {
     MAX_PARALLEL = 8;
     TIMEOUT = 900000; // 15分钟
+    progressWriter = getProgressFileWriter();
     /**
      * 主入口：执行完整的Master调度流程
      */
     async execute(claudePrompt) {
         Logger.info(`🎯 牛马Master启动: ${claudePrompt.substring(0, 100)}...`);
+        // 启动进度文件跟踪
+        this.progressWriter.start();
         try {
             // 1. 分析并分解任务
+            await this.updateProgress(5, '任务分析中', 0, 0, 0, []);
             const subtasks = await this.analyzeAndDecompose(claudePrompt);
             Logger.info(`📋 任务分解完成，共${subtasks.length}个子任务`);
+            // 初始化任务列表
+            const tasks = subtasks.map(task => ({
+                id: task.id,
+                name: task.prompt.substring(0, 50) + '...',
+                status: 'pending',
+                progress: 0
+            }));
+            await this.updateProgress(15, '任务分解完成', subtasks.length, 0, subtasks.length, tasks);
             // 2. 8路并行执行
-            const results = await this.executeParallel(subtasks);
+            await this.updateProgress(20, '开始并行执行', subtasks.length, 0, subtasks.length, tasks);
+            const results = await this.executeParallel(subtasks, tasks);
             Logger.info(`⚡ 并行执行完成，收到${results.length}个结果`);
             // 3. 整合结果
+            await this.updateProgress(85, '整合分析结果', subtasks.length, subtasks.length, 0, tasks);
             const mergedResults = this.mergeResults(results);
             Logger.info(`🔗 结果整合完成，总长度: ${mergedResults.length}字符`);
             // 4. 生成执行计划
+            await this.updateProgress(95, '生成执行计划', subtasks.length, subtasks.length, 0, tasks);
             const plan = await this.generateExecutionPlan(claudePrompt, mergedResults);
             Logger.info(`📝 执行计划生成完成`);
+            // 完成
+            await this.updateProgress(100, '执行完成', subtasks.length, subtasks.length, 0, tasks);
             return plan;
         }
         catch (error) {
             Logger.error('Master执行失败:', error);
+            // 更新错误状态
+            await this.updateProgress(0, '执行失败', 0, 0, 0, [], error instanceof Error ? error.message : String(error));
+            // 停止进度跟踪
+            setTimeout(() => this.progressWriter.stop(), 1000);
             throw new Error(`牛马Master执行失败: ${error instanceof Error ? error.message : String(error)}`);
         }
+        finally {
+            // 确保进度跟踪最终停止
+            setTimeout(() => this.progressWriter.stop(), 3000);
+        }
+    }
+    /**
+     * 更新进度状态
+     */
+    async updateProgress(overallProgress, currentPhase, totalTasks, completedTasks, pendingTasks, tasks, error) {
+        const runningTasks = totalTasks - completedTasks - pendingTasks;
+        await this.progressWriter.updateProgress({
+            overallProgress,
+            currentPhase,
+            totalTasks,
+            completedTasks,
+            runningTasks,
+            pendingTasks,
+            tasks,
+            message: `${currentPhase} - ${overallProgress}%完成`,
+            error
+        });
+    }
+    /**
+     * 基于任务状态更新进度
+     */
+    async updateProgressFromTasks(tasks, currentPhase) {
+        const totalTasks = tasks.length;
+        const completedTasks = tasks.filter(t => t.status === 'completed').length;
+        const failedTasks = tasks.filter(t => t.status === 'failed').length;
+        const runningTasks = tasks.filter(t => t.status === 'running').length;
+        const pendingTasks = tasks.filter(t => t.status === 'pending').length;
+        // 计算整体进度：20% (分解完成) + 65% (并行执行) = 85% 最大
+        const baseProgress = 20; // 任务分解完成的基础进度
+        const executionProgress = Math.round((completedTasks + failedTasks) / totalTasks * 65);
+        const overallProgress = Math.min(85, baseProgress + executionProgress);
+        await this.progressWriter.updateProgress({
+            overallProgress,
+            currentPhase,
+            totalTasks,
+            completedTasks,
+            runningTasks,
+            pendingTasks,
+            tasks,
+            message: `${currentPhase} - 任务进度: ${completedTasks + failedTasks}/${totalTasks}`
+        });
     }
     /**
      * 步骤1: 智能分析并分解任务（不使用Codex，直接基于规则）
@@ -150,10 +217,14 @@ export class 牛马Master {
     /**
      * 步骤2: 8路并行执行子任务
      */
-    async executeParallel(subtasks) {
+    async executeParallel(subtasks, tasks) {
         Logger.info(`🚀 开始${subtasks.length}路并行执行`);
         const promises = subtasks.map(async (task, index) => {
             try {
+                // 更新任务状态为运行中
+                tasks[index].status = 'running';
+                tasks[index].startTime = Date.now();
+                await this.updateProgressFromTasks(tasks, '并行执行中');
                 Logger.info(`📤 启动任务${index + 1}/${subtasks.length}: ${task.prompt.substring(0, 50)}...`);
                 const result = await executeCodex(task.prompt, {
                     model: 'gpt-5',
@@ -161,10 +232,22 @@ export class 牛马Master {
                     timeout: this.TIMEOUT,
                     useExec: true
                 });
+                // 更新任务状态为完成
+                tasks[index].status = 'completed';
+                tasks[index].endTime = Date.now();
+                tasks[index].duration = tasks[index].endTime - (tasks[index].startTime || 0);
+                tasks[index].progress = 100;
+                await this.updateProgressFromTasks(tasks, '并行执行中');
                 Logger.info(`✅ 任务${index + 1}完成: ${result.response.length}字符`);
                 return result;
             }
             catch (error) {
+                // 更新任务状态为失败
+                tasks[index].status = 'failed';
+                tasks[index].endTime = Date.now();
+                tasks[index].duration = tasks[index].endTime - (tasks[index].startTime || 0);
+                tasks[index].error = error instanceof Error ? error.message : String(error);
+                await this.updateProgressFromTasks(tasks, '并行执行中');
                 Logger.error(`❌ 任务${index + 1}失败:`, error);
                 // 返回错误结果而不是抛出异常，保证其他任务能继续
                 return {
